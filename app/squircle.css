@@ -2,20 +2,20 @@
 .squircle {
   --squircle-radius: 40px;
   --squircle-p: 100%;
-  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Cpath d='M 0,50 C 0,0 0,0 50,0 C 100,0 100,0 100,50 C 100,100 100,100 50,100 C 0,100 0,100 0,50' fill='black'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M 0,50 C 0,0 0,0 50,0 C 100,0 100,0 100,50 C 100,100 100,100 50,100 C 0,100 0,100 0,50' fill='black'/%3E%3C/svg%3E");
   mask-size: 100% 100%;
   mask-repeat: no-repeat;
-  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Cpath d='M 0,50 C 0,0 0,0 50,0 C 100,0 100,0 100,50 C 100,100 100,100 50,100 C 0,100 0,100 0,50' fill='black'/%3E%3C/svg%3E");
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M 0,50 C 0,0 0,0 50,0 C 100,0 100,0 100,50 C 100,100 100,100 50,100 C 0,100 0,100 0,50' fill='black'/%3E%3C/svg%3E");
   -webkit-mask-size: 100% 100%;
   -webkit-mask-repeat: no-repeat;
 }
 
 .squircle-inner {
   --squircle-radius: 20px;
-  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Cpath d='M 0,50 C 0,0 0,0 50,0 C 100,0 100,0 100,50 C 100,100 100,100 50,100 C 0,100 0,100 0,50' fill='black'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M 0,50 C 0,0 0,0 50,0 C 100,0 100,0 100,50 C 100,100 100,100 50,100 C 0,100 0,100 0,50' fill='black'/%3E%3C/svg%3E");
   mask-size: 100% 100%;
   mask-repeat: no-repeat;
-  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Cpath d='M 0,50 C 0,0 0,0 50,0 C 100,0 100,0 100,50 C 100,100 100,100 50,100 C 0,100 0,100 0,50' fill='black'/%3E%3C/svg%3E");
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M 0,50 C 0,0 0,0 50,0 C 100,0 100,0 100,50 C 100,100 100,100 50,100 C 0,100 0,100 0,50' fill='black'/%3E%3C/svg%3E");
   -webkit-mask-size: 100% 100%;
   -webkit-mask-repeat: no-repeat;
 }

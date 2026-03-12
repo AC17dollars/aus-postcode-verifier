@@ -19,7 +19,7 @@ export function TorchBackground({ isTorchOff }: TorchBackgroundProps) {
       const rect = containerRef.current.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
-      
+
       setMousePos({ x, y });
     };
 
