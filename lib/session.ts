@@ -125,26 +125,27 @@ export async function getSession(): Promise<SessionPayload | null> {
     if (!userResponse.found) return null;
     const user = userResponse._source as { email: string; name: string };
 
-    // 4. Update Elasticsearch record (Sliding Window)
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + SESSION_EXPIRATION_DAYS);
+    // 4. Update Elasticsearch record (Sliding Window) & Cookie
+    try {
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + SESSION_EXPIRATION_DAYS);
 
-    await elasticClient.update({
-      index: SESSIONS_INDEX,
-      id: sessionDoc._id as string,
-      doc: {
-        expiresAt: expiresAt.toISOString(),
-      },
-    });
+      await elasticClient.update({
+        index: SESSIONS_INDEX,
+        id: sessionDoc._id as string,
+        doc: {
+          expiresAt: expiresAt.toISOString(),
+        },
+      });
 
-    // 5. Update cookie maxAge to slide with the DB expiration
-    cookieStore.set("session_token", sessionToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-      maxAge: SESSION_EXPIRATION_DAYS * 24 * 60 * 60,
-    });
+      cookieStore.set("session_token", sessionToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+        maxAge: SESSION_EXPIRATION_DAYS * 24 * 60 * 60,
+      });
+    } catch {}
 
     return {
       userId: session.userId,

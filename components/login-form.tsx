@@ -1,6 +1,12 @@
 "use client";
 
-import React, { useState, useRef, useEffect, useTransition } from "react";
+import {
+  useState,
+  useRef,
+  useEffect,
+  useTransition,
+  SyntheticEvent,
+} from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Eye,
@@ -27,14 +33,13 @@ import {
 
 interface LoginFormProps {
   onSensitivityChange: (isNear: boolean) => void;
-  isPasswordFocused: boolean;
   setIsPasswordFocused: (focused: boolean) => void;
 }
 
 export function LoginForm({
   onSensitivityChange,
   setIsPasswordFocused,
-}: LoginFormProps) {
+}: Readonly<LoginFormProps>) {
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -58,7 +63,7 @@ export function LoginForm({
     });
   };
 
-  const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
     setSuccess(null);
@@ -107,9 +112,8 @@ export function LoginForm({
 
       onSensitivityChange(isNear);
     };
-
-    window.addEventListener("mousemove", handleMouseMove);
-    return () => window.removeEventListener("mousemove", handleMouseMove);
+    globalThis.addEventListener("mousemove", handleMouseMove);
+    return () => globalThis.removeEventListener("mousemove", handleMouseMove);
   }, [onSensitivityChange]);
 
   return (
@@ -194,6 +198,7 @@ export function LoginForm({
                       id="name"
                       name="name"
                       required
+                      autoComplete="name"
                       placeholder="Alexander Pierce"
                       className="bg-white/[0.04] border-transparent h-14 pl-12 text-white placeholder:text-gray-600 focus:bg-white/[0.08] transition-all border-none outline-none"
                     />
@@ -218,6 +223,7 @@ export function LoginForm({
                   name="email"
                   type="email"
                   required
+                  autoComplete="email"
                   placeholder="name@domain.com"
                   className="bg-white/[0.04] border-transparent h-14 pl-12 text-white placeholder:text-gray-600 focus:bg-white/[0.08] transition-all border-none outline-none"
                 />
@@ -240,6 +246,7 @@ export function LoginForm({
                   name="password"
                   type={showPassword ? "text" : "password"}
                   required
+                  autoComplete={isLogin ? "current-password" : "new-password"}
                   placeholder="••••••••••••"
                   onFocus={() => setIsPasswordFocused(true)}
                   onBlur={() => setIsPasswordFocused(false)}

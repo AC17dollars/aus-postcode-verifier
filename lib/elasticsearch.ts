@@ -39,13 +39,7 @@ export async function initElastic() {
 
   try {
     const exists = await elasticClient.indices.exists({ index: USERS_INDEX });
-    if (!exists) {
-      await elasticClient.indices.create({
-        index: USERS_INDEX,
-        mappings: mapping,
-      });
-      console.log(`Index ${USERS_INDEX} created.`);
-    } else {
+    if (exists) {
       await elasticClient.indices.putMapping({
         index: USERS_INDEX,
         properties: {
@@ -55,6 +49,12 @@ export async function initElastic() {
         },
       });
       console.log(`Mapping updated for ${USERS_INDEX}.`);
+    } else {
+      await elasticClient.indices.create({
+        index: USERS_INDEX,
+        mappings: mapping,
+      });
+      console.log(`Index ${USERS_INDEX} created.`);
     }
 
     const sessionsExists = await elasticClient.indices.exists({

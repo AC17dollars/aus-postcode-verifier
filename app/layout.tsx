@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
+import { GraphQLProvider } from "@/components/graphql-provider";
 import "./globals.css";
 
 const jakarta = Plus_Jakarta_Sans({
@@ -8,8 +9,8 @@ const jakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Secure Login Portal",
-  description: "Access your encrypted dashboard",
+  title: "AC17's Australia Post Address Verifier",
+  description: "Lawpath Address Verifier",
 };
 
 export default function RootLayout({
@@ -19,7 +20,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${jakarta.variable} antialiased`}>{children}</body>
+      <body className={`${jakarta.variable} antialiased`}>
+        <GraphQLProvider>{children}</GraphQLProvider>
+      </body>
     </html>
   );
 }

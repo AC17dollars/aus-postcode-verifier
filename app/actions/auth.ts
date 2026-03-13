@@ -4,7 +4,7 @@ import { elasticClient, USERS_INDEX, initElastic } from "@/lib/elasticsearch";
 import argon2 from "argon2";
 import crypto from "node:crypto";
 import { headers } from "next/headers";
-import { createSession, logout, revokeAllUserSessions } from "@/lib/session";
+import { createSession, revokeAllUserSessions, logout } from "@/lib/session";
 
 interface UserDocument {
   name: string;

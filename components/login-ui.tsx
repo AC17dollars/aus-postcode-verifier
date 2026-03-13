@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
 import { TorchBackground } from "./torch-background";
 import { LoginForm } from "./login-form";
 
@@ -15,7 +15,6 @@ export function LoginUI() {
       <TorchBackground isTorchOff={isTorchOff} />
       <LoginForm
         onSensitivityChange={setIsNearSensitiveArea}
-        isPasswordFocused={isPasswordFocused}
         setIsPasswordFocused={setIsPasswordFocused}
       />
     </main>
