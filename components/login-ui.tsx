@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { TorchBackground } from "./torch-background";
-import { LoginForm } from "./login-form";
+import { LoginForm } from "@/components/forms";
 
 export function LoginUI() {
   const [isNearSensitiveArea, setIsNearSensitiveArea] = useState(false);

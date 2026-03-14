@@ -1,4 +1,4 @@
-import { z } from "zod/v4";
+import { z } from "zod";
 
 const schema = z.object({
   ELASTIC_NODE: z.url("ELASTIC_NODE must be a valid URL"),

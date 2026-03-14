@@ -4,7 +4,10 @@ import { elasticClient, USERS_INDEX, initElastic } from "@/lib/elasticsearch";
 import argon2 from "argon2";
 import crypto from "node:crypto";
 import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { createSession, revokeAllUserSessions, logout } from "@/lib/session";
+
+const VERIFICATION_TOKEN_EXPIRY_MINUTES = 10;
 
 interface UserDocument {
   name: string;
@@ -12,6 +15,7 @@ interface UserDocument {
   password: string;
   verified: boolean;
   verificationToken?: string;
+  verificationTokenExpiresAt?: string;
   createdAt: string;
 }
 
@@ -45,6 +49,7 @@ export async function register(formData: FormData) {
 
     const hashedPassword = await argon2.hash(password);
     const verificationToken = crypto.randomBytes(16).toString("hex");
+    const verificationTokenExpiresAt = new Date(Date.now() + VERIFICATION_TOKEN_EXPIRY_MINUTES * 60 * 1000).toISOString();
 
     await elasticClient.index({
       index: USERS_INDEX,
@@ -54,6 +59,7 @@ export async function register(formData: FormData) {
         password: hashedPassword,
         verified: false,
         verificationToken,
+        verificationTokenExpiresAt,
         createdAt: new Date().toISOString(),
       },
       refresh: "wait_for",
@@ -98,15 +104,6 @@ export async function login(formData: FormData) {
     const userDoc = searchResponse.hits.hits[0];
     const user = userDoc._source as UserDocument;
 
-    if (!user.verified) {
-      return {
-        error:
-          "Please check your email to verify your account or resend the verification email.",
-        needsVerification: true,
-        email: user.email,
-      };
-    }
-
     const isValid = await argon2.verify(user.password, password);
     if (!isValid) {
       return { error: "Invalid credentials" };
@@ -122,6 +119,14 @@ export async function login(formData: FormData) {
       userAgent,
       ipAddress,
     );
+
+    if (!user.verified) {
+      return {
+        success: "Please verify your email to continue.",
+        needsVerification: true,
+        email: user.email,
+      };
+    }
 
     return { success: `Welcome back, ${user.name}!` };
   } catch (error) {
@@ -151,12 +156,14 @@ export async function resendVerification(email: string) {
     }
 
     const verificationToken = crypto.randomBytes(16).toString("hex");
+    const verificationTokenExpiresAt = new Date(Date.now() + VERIFICATION_TOKEN_EXPIRY_MINUTES * 60 * 1000).toISOString();
 
     await elasticClient.update({
       index: USERS_INDEX,
       id: userDoc._id as string,
       doc: {
         verificationToken,
+        verificationTokenExpiresAt,
       },
       refresh: "wait_for",
     });
@@ -188,6 +195,12 @@ export async function verifyEmail(token: string) {
     }
 
     const userDoc = searchResponse.hits.hits[0];
+    const user = userDoc._source as UserDocument;
+    const expiresAt = user.verificationTokenExpiresAt;
+    if (expiresAt && new Date(expiresAt) < new Date()) {
+      return { error: "Verification link has expired. Please request a new one." };
+    }
+
     const userId = userDoc._id;
 
     await elasticClient.update({
@@ -195,12 +208,15 @@ export async function verifyEmail(token: string) {
       id: userId as string,
       script: {
         source:
-          "ctx._source.verified = true; ctx._source.remove('verificationToken')",
+          "ctx._source.verified = true; ctx._source.remove('verificationToken'); ctx._source.remove('verificationTokenExpiresAt');",
       },
       refresh: "wait_for",
     });
 
-    return { success: "Email verified successfully! You can now log in." };
+    return {
+      success: "Email verified successfully! You can now log in.",
+      email: user.email,
+    };
   } catch (error) {
     console.error("Verification error:", error);
     return { error: "Internal server error" };
@@ -208,6 +224,11 @@ export async function verifyEmail(token: string) {
 }
 
 export { logout };
+
+export async function logoutAndRedirectToAuth() {
+  await logout();
+  redirect("/auth");
+}
 
 export async function revokeAllSessions(userId: string) {
   await revokeAllUserSessions(userId);

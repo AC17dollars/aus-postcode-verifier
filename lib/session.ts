@@ -8,10 +8,11 @@ export interface SessionPayload {
   userId: string;
   email: string;
   name: string;
+  verified: boolean;
 }
 
 export async function createSession(
-  payload: SessionPayload,
+  payload: Omit<SessionPayload, "verified">,
   deviceInfo: string = "Unknown Device",
   userAgent: string = "Unknown Browser",
   ipAddress: string = "Unknown IP",
@@ -123,7 +124,7 @@ export async function getSession(): Promise<SessionPayload | null> {
     });
 
     if (!userResponse.found) return null;
-    const user = userResponse._source as { email: string; name: string };
+    const user = userResponse._source as { email: string; name: string; verified?: boolean };
 
     // 4. Update Elasticsearch record (Sliding Window) & Cookie
     try {
@@ -151,6 +152,7 @@ export async function getSession(): Promise<SessionPayload | null> {
       userId: session.userId,
       email: user.email,
       name: user.name,
+      verified: user.verified === true,
     };
   } catch (error) {
     console.error("Session verification failed", error);

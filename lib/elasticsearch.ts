@@ -22,6 +22,7 @@ export async function initElastic() {
       name: { type: "text" },
       verified: { type: "boolean" },
       verificationToken: { type: "keyword" },
+      verificationTokenExpiresAt: { type: "date" },
     },
   } as const;
 
@@ -43,9 +44,8 @@ export async function initElastic() {
       await elasticClient.indices.putMapping({
         index: USERS_INDEX,
         properties: {
-          text: {
-            type: "semantic_text" as const,
-          },
+          text: { type: "semantic_text" as const },
+          verificationTokenExpiresAt: { type: "date" },
         },
       });
       console.log(`Mapping updated for ${USERS_INDEX}.`);

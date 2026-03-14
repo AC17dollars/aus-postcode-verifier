@@ -5,8 +5,12 @@ import { redirect } from "next/navigation";
 export default async function Page() {
   const session = await getSession();
 
-  if (session) {
+  if (session?.verified) {
     redirect("/");
+  }
+
+  if (session && !session.verified) {
+    redirect("/verify-email");
   }
 
   return <LoginUI />;
