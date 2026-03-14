@@ -45,6 +45,10 @@ export async function logGraphQLAttempt(payload: GraphQLLogPayload) {
       refresh: "false",
     });
   } catch (error) {
-    console.error("Failed to log GraphQL attempt:", error);
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error("[GraphQL logs] Failed to store attempt:", msg);
+    if (error instanceof Error && error.cause) {
+      console.error("[GraphQL logs] Cause:", error.cause);
+    }
   }
 }

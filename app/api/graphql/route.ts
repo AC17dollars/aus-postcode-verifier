@@ -131,21 +131,22 @@ const resolvers = {
           throw createGraphQLError("Suburb not found for postcode.");
         }
 
-        logGraphQLAttempt({
+        // Await so serverless (e.g. production custom domain) doesn't terminate before log is stored
+        await logGraphQLAttempt({
           ...logPayload,
           success: true,
-        }).catch(() => {});
+        }).catch((e) => console.error("[GraphQL] log write failed:", e));
 
         return result;
       } catch (err) {
         const message =
           err instanceof Error ? err.message : "Request failed. Try again.";
 
-        logGraphQLAttempt({
+        await logGraphQLAttempt({
           ...logPayload,
           success: false,
           errorMessage: message,
-        }).catch(() => {});
+        }).catch((e) => console.error("[GraphQL] log write failed:", e));
 
         if (err instanceof GraphQLError) throw err;
         throw createGraphQLError("Unexpected error.");

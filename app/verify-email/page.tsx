@@ -19,13 +19,18 @@ function renderTokenResult(
       />
     );
   }
-  const verifiedEmail = result.email?.toLowerCase();
-  const currentEmail = session?.email?.toLowerCase();
-  const isDifferentUser =
-    verifiedEmail && currentEmail && currentEmail !== verifiedEmail;
+  const verifiedEmail = result.email?.toLowerCase()?.trim();
+  const currentEmail = session?.email?.toLowerCase()?.trim();
+  const hasSession = Boolean(currentEmail);
   const isSameUser =
-    verifiedEmail !== undefined && currentEmail === verifiedEmail;
+    hasSession &&
+    verifiedEmail !== undefined &&
+    verifiedEmail !== "" &&
+    currentEmail === verifiedEmail;
+  const isDifferentUser =
+    hasSession && verifiedEmail !== undefined && currentEmail !== verifiedEmail;
 
+  // Cookie stored but different user than the one being verified → Close popup
   if (isDifferentUser) {
     return (
       <VerifyEmailLoggedInPopup
@@ -35,6 +40,7 @@ function renderTokenResult(
       />
     );
   }
+  // Cookie stored and same user just verified → Go to dashboard
   if (isSameUser) {
     return (
       <VerifyEmailResult
@@ -44,6 +50,7 @@ function renderTokenResult(
       />
     );
   }
+  // No cookie (unauthenticated) → Go to login
   return (
     <VerifyEmailResult
       status="success"
