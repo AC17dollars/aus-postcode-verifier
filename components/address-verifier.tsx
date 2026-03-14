@@ -1,9 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import Link from "next/link";
 import { motion } from "framer-motion";
-import { Navigation, Layers, ArrowLeft, LogOut } from "lucide-react";
-import { logout } from "@/app/actions/auth";
+import {
+  Navigation,
+  Layers,
+  ArrowLeft,
+  Settings,
+  FileText,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TorchBackground } from "@/components/torch-background";
 import {
@@ -11,6 +17,11 @@ import {
   type AddressVerifierStatus,
   type Locality,
 } from "@/components/forms";
+import {
+  useVerifierStore,
+  setStoragePreferenceForPersistence,
+} from "@/lib/verifier-store";
+import { SettingsModal } from "@/components/settings-modal";
 
 import dynamic from "next/dynamic";
 const MapComponent = dynamic(
@@ -22,21 +33,40 @@ interface AddressVerifierProps {
   readonly user: {
     name: string;
     email: string;
+    userId: string;
+    admin?: boolean;
+    storagePreference?: "none" | "sessionStorage" | "localStorage";
   };
 }
 
 export function AddressVerifier({ user }: Readonly<AddressVerifierProps>) {
-  const [status, setStatus] = useState<AddressVerifierStatus>("idle");
-  const [localities, setLocalities] = useState<Locality[]>([]);
-  const [showMapOnMobile, setShowMapOnMobile] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [isFieldFocused, setIsFieldFocused] = useState(false);
+
+  const {
+    form: storeForm,
+    setForm: setStoreForm,
+    localities,
+    setLocalities,
+    status,
+    message,
+    setStatus,
+    showMapOnMobile,
+    setShowMapOnMobile,
+  } = useVerifierStore();
+
+  useEffect(() => {
+    setStoragePreferenceForPersistence(
+      user.storagePreference ?? "sessionStorage",
+    );
+  }, [user.storagePreference]);
 
   const handleStatusChange = (data: {
     status: AddressVerifierStatus;
     message: string;
     localities: Locality[];
   }) => {
-    setStatus(data.status);
+    setStatus(data.status, data.message);
     setLocalities(data.localities);
   };
 
@@ -56,19 +86,48 @@ export function AddressVerifier({ user }: Readonly<AddressVerifierProps>) {
             <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent" />
 
             <header className="mb-10 text-center relative">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => logout()}
-                className="group absolute -top-4 -right-2 flex items-center gap-2 px-2 py-1.5 text-white/30 hover:text-white transition-colors"
-                title="Logout"
-              >
-                <span className="text-[10px] font-bold uppercase tracking-widest block md:hidden md:group-hover:block">
-                  Logout
-                </span>
-                <LogOut size={18} className="transition-transform shrink-0" />
-              </Button>
+              <div className="absolute top-0 right-0 flex flex-col items-end gap-1">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSettingsOpen(true)}
+                  className="group flex items-center gap-3 px-3 py-1.5 rounded-lg text-white/30 hover:text-white hover:bg-white/5 transition-colors"
+                  title="Settings"
+                >
+                  <span className="text-[10px] font-bold uppercase tracking-widest block md:hidden md:group-hover:block">
+                    Settings
+                  </span>
+                  <Settings size={18} className="w-[18px] h-[18px] shrink-0" />
+                </Button>
+                {user.admin && (
+                  <Link
+                    href="/logs"
+                    aria-label="View logs"
+                    title="View logs"
+                    className="group flex items-center gap-3 px-3 py-1.5 rounded-lg text-white/30 hover:text-white hover:bg-white/5 transition-colors"
+                  >
+                    <span className="text-[10px] font-bold uppercase tracking-widest block md:hidden md:group-hover:block">
+                      Logs
+                    </span>
+                    <FileText
+                      size={18}
+                      className="w-[18px] h-[18px] shrink-0"
+                    />
+                  </Link>
+                )}
+              </div>
+              <SettingsModal
+                open={settingsOpen}
+                onClose={() => setSettingsOpen(false)}
+                user={{
+                  name: user.name,
+                  email: user.email,
+                  userId: user.userId,
+                  admin: user.admin,
+                  storagePreference: user.storagePreference,
+                }}
+              />
 
               <div className="inline-flex items-center gap-3 mb-6 select-none">
                 <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-2xl shadow-white/5">
@@ -86,6 +145,18 @@ export function AddressVerifier({ user }: Readonly<AddressVerifierProps>) {
             </header>
 
             <AddressVerifierForm
+              defaultValues={storeForm}
+              onFormValuesChange={(values) => {
+                setStoreForm({
+                  postcode: values.postcode ?? "",
+                  suburb: values.suburb ?? "",
+                  state: values.state ?? "",
+                });
+                setLocalities([]);
+                setStatus("idle", "");
+              }}
+              status={status}
+              message={message}
               onStatusChange={handleStatusChange}
               setIsFieldFocused={setIsFieldFocused}
               onShowMapRequested={() => setShowMapOnMobile(true)}

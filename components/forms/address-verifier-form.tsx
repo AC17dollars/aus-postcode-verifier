@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { motion, AnimatePresence } from "framer-motion";
@@ -31,8 +31,8 @@ import {
 } from "@/components/ui/select";
 
 const SEARCH_QUERY = `
-  query SearchPostcode($q: String!, $state: String) {
-    searchPostcode(q: $q, state: $state) {
+  query SearchPostcode($q: String!, $state: String, $suburb: String) {
+    searchPostcode(q: $q, state: $state, suburb: $suburb) {
       id
       location
       postcode
@@ -57,6 +57,10 @@ export interface Locality {
 export type AddressVerifierStatus = "idle" | "loading" | "success" | "error";
 
 export interface AddressVerifierFormProps {
+  defaultValues?: Partial<AddressVerifierFormValues>;
+  onFormValuesChange: (values: AddressVerifierFormValues) => void;
+  status?: AddressVerifierStatus;
+  message?: string;
   onStatusChange: (data: {
     status: AddressVerifierStatus;
     message: string;
@@ -77,47 +81,71 @@ const stateItems = [
   ...AU_STATE_OPTIONS.map((s) => ({ label: s, value: s })),
 ];
 
-function validateSearchResults(
-  data: AddressVerifierFormValues,
-  results: Locality[],
-): { status: AddressVerifierStatus; message: string } {
-  if (!results?.length) {
-    return { status: "error", message: "Invalid Postcode" };
-  }
-  const sub = data.suburb.trim().toUpperCase();
-  const matched = results.find((l) => l.location === sub);
-  if (!matched) {
-    return { status: "error", message: "Invalid Suburb" };
-  }
-  if (data.state && matched.state !== data.state) {
-    return { status: "error", message: "Invalid State" };
-  }
-  return { status: "success", message: "Valid Location" };
-}
-
 export function AddressVerifierForm({
+  defaultValues,
+  onFormValuesChange,
+  status: statusProp,
+  message: messageProp,
   onStatusChange,
   setIsFieldFocused,
   onShowMapRequested,
 }: Readonly<AddressVerifierFormProps>) {
   const client = useClient();
-  const [status, setStatus] = useState<AddressVerifierStatus>("idle");
-  const [message, setMessage] = useState("");
+  const [localStatus, setLocalStatus] = useState<AddressVerifierStatus>("idle");
+  const [localMessage, setLocalMessage] = useState("");
+  const appliedInitialRef = useRef(false);
+  const status = statusProp ?? localStatus;
+  const message = messageProp ?? localMessage;
 
   const form = useForm<AddressVerifierFormValues>({
     resolver: zodResolver(addressVerifierSchema),
-    defaultValues: { postcode: "", suburb: "", state: "" },
+    defaultValues: {
+      postcode: defaultValues?.postcode ?? "",
+      suburb: defaultValues?.suburb ?? "",
+      state: defaultValues?.state ?? "",
+    },
     mode: "onTouched",
   });
+
+  useEffect(() => {
+    if (
+      !defaultValues ||
+      appliedInitialRef.current ||
+      (defaultValues.postcode === "" &&
+        defaultValues.suburb === "" &&
+        defaultValues.state === "")
+    )
+      return;
+  
+    appliedInitialRef.current = true;
+  
+    // Reset and notify in one microtask
+    queueMicrotask(() => {
+      form.reset(defaultValues);
+      onFormValuesChange({
+        postcode: defaultValues.postcode ?? "",
+        suburb: defaultValues.suburb ?? "",
+        state: defaultValues.state ?? "",
+      });
+    });
+  }, [defaultValues, form, onFormValuesChange]);
+
+  function notifyFormValuesChange() {
+    onFormValuesChange(form.getValues());
+  }
 
   const updateStatus = (
     nextStatus: AddressVerifierStatus,
     nextMessage: string,
     nextLocalities: Locality[] = [],
   ) => {
-    setStatus(nextStatus);
-    setMessage(nextMessage);
-    onStatusChange({ status: nextStatus, message: nextMessage, localities: nextLocalities });
+    setLocalStatus(nextStatus);
+    setLocalMessage(nextMessage);
+    onStatusChange({
+      status: nextStatus,
+      message: nextMessage,
+      localities: nextLocalities,
+    });
   };
 
   const resetForm = () => {
@@ -135,24 +163,23 @@ export function AddressVerifierForm({
           {
             q: data.postcode.trim(),
             state: data.state || undefined,
+            suburb: data.suburb?.trim() || undefined,
           },
           status === "error" ? { requestPolicy: "network-only" } : undefined,
         )
         .toPromise();
 
       if (result.error) {
-        updateStatus("error", result.error.message, []);
+        const raw =
+          result.error.graphQLErrors?.[0]?.message ?? result.error.message ?? "";
+        const message = raw.replace(/^\[GraphQL\]\s*/, "");
+        updateStatus("error", message, []);
         return;
       }
 
       const results = (result.data?.searchPostcode ?? []) as Locality[];
-      const validated = validateSearchResults(data, results);
-
-      if (validated.status === "success") {
-        updateStatus(validated.status, validated.message, results);
-      } else {
-        updateStatus(validated.status, validated.message, []);
-      }
+      const message = results.length ? "Valid Location" : "No results";
+      updateStatus(results.length ? "success" : "error", message, results);
     } catch {
       updateStatus("error", "Connection Error", []);
     }
@@ -190,7 +217,7 @@ export function AddressVerifierForm({
         <div className="relative group overflow-hidden rounded-lg">
           <Input
             id="postcode"
-            {...form.register("postcode")}
+            {...form.register("postcode", { onChange: notifyFormValuesChange })}
             placeholder="e.g. 3004"
             className={inputClass}
             {...focusHandlers}
@@ -214,7 +241,7 @@ export function AddressVerifierForm({
         <div className="relative group overflow-hidden rounded-lg">
           <Input
             id="suburb"
-            {...form.register("suburb")}
+            {...form.register("suburb", { onChange: notifyFormValuesChange })}
             placeholder="e.g. Melbourne"
             className={inputClass}
             {...focusHandlers}
@@ -240,7 +267,13 @@ export function AddressVerifierForm({
             name="state"
             control={form.control}
             render={({ field }) => (
-              <Select value={field.value || ""} onValueChange={field.onChange}>
+              <Select
+                value={field.value || ""}
+                onValueChange={(value) => {
+                  field.onChange(value);
+                  notifyFormValuesChange();
+                }}
+              >
                 <SelectTrigger
                   id="state"
                   className={selectTriggerClass}
@@ -249,9 +282,7 @@ export function AddressVerifierForm({
                 >
                   <SelectValue placeholder="Select State" />
                 </SelectTrigger>
-                <SelectContent
-                  className="bg-[#0a0a0a] border border-white/10 text-white shadow-xl shadow-black/40 rounded-xl font-sans [&_[data-slot=select-item]]:text-base [&_[data-slot=select-item]]:font-medium [&_[data-slot=select-item]]:py-2.5 [&_[data-slot=select-item]]:focus:bg-white/10 [&_[data-slot=select-item]]:data-[highlighted]:bg-white/10"
-                >
+                <SelectContent className="bg-[#0a0a0a] border border-white/10 text-white shadow-xl shadow-black/40 rounded-xl font-sans [&_[data-slot=select-item]]:text-base [&_[data-slot=select-item]]:font-medium [&_[data-slot=select-item]]:py-2.5 [&_[data-slot=select-item]]:focus:bg-white/10 [&_[data-slot=select-item]]:data-[highlighted]:bg-white/10">
                   <SelectGroup>
                     {stateItems.map((item) => (
                       <SelectItem
@@ -303,33 +334,38 @@ function StatusAndSubmitSection({
 
   return (
     <>
-      <div className="flex gap-3">
+      <div className="flex gap-3 items-stretch">
         <AnimatePresence mode="wait">
           {showResult && (
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className={`flex-1 flex items-center justify-center gap-3 px-4 py-4 rounded-xl font-bold text-sm border ${isSuccess ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-500" : "bg-rose-500/10 border-rose-500/20 text-rose-500"}`}
+              className={`flex-1 min-w-0 flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm border h-14 overflow-hidden ${isSuccess ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-500" : "bg-rose-500/10 border-rose-500/20 text-rose-500"}`}
             >
               {isSuccess ? (
-                <CheckCircle2 size={18} />
+                <CheckCircle2 size={18} className="shrink-0" />
               ) : (
-                <AlertCircle size={18} />
+                <AlertCircle size={18} className="shrink-0" />
               )}
-              <span className="truncate">{message}</span>
+              <span className="min-w-0 break-words line-clamp-2">
+                {message}
+              </span>
             </motion.div>
           )}
         </AnimatePresence>
         <Button
           type="submit"
           disabled={isSubmitting}
-          className={`${showResult ? "w-[68px]" : "w-full"} h-14 bg-white text-black hover:bg-gray-200 rounded-lg font-bold text-lg shadow-xl shadow-white/5 transition-all disabled:opacity-50 flex items-center justify-center gap-3 group shrink-0 select-none`}
+          className={`h-14 shrink-0 bg-white text-black hover:bg-gray-200 rounded-lg font-bold text-lg shadow-xl shadow-white/5 transition-all disabled:opacity-50 flex items-center justify-center gap-3 group select-none ${showResult ? "w-[68px]" : "flex-1 min-w-0"}`}
         >
           {isSubmitting ? (
             <Loader2 size={24} className="animate-spin" />
           ) : (
             <>
-              <Search size={24} className="group-hover:scale-110 transition-transform" />
+              <Search
+                size={24}
+                className="group-hover:scale-110 transition-transform"
+              />
               {status === "idle" && <span>Verify</span>}
             </>
           )}

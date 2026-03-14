@@ -165,7 +165,9 @@ function PasswordField({
   setIsPasswordFocused,
   isLogin,
 }: Readonly<{
-  registerPassword: ReturnType<ReturnType<typeof useForm<LoginFormValues>>["register"]>;
+  registerPassword: ReturnType<
+    ReturnType<typeof useForm<LoginFormValues>>["register"]
+  >;
   passwordError: string | undefined;
   showPassword: boolean;
   setShowPassword: (v: boolean) => void;
@@ -322,10 +324,7 @@ export function LoginForm({
                 : signupForm.handleSubmit(onSubmitSignup)
             }
           >
-            <AuthAlertBanner
-              error={error}
-              success={success}
-            />
+            <AuthAlertBanner error={error} success={success} />
 
             <AnimatePresence mode="wait">
               {!isLogin && (

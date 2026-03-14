@@ -21,6 +21,8 @@ interface UserDocument {
   verificationToken?: string;
   verificationTokenExpiresAt?: string;
   createdAt: string;
+  admin?: boolean;
+  storagePreference?: "none" | "sessionStorage" | "localStorage";
 }
 
 export async function register(formData: FormData) {
@@ -51,9 +53,14 @@ export async function register(formData: FormData) {
       return { error: "User already exists" };
     }
 
+    const countResponse = await elasticClient.count({ index: USERS_INDEX });
+    const isFirstUser = (countResponse.count ?? 0) === 0;
+
     const hashedPassword = await argon2.hash(password);
     const verificationToken = crypto.randomBytes(16).toString("hex");
-    const verificationTokenExpiresAt = new Date(Date.now() + VERIFICATION_TOKEN_EXPIRY_MINUTES * 60 * 1000).toISOString();
+    const verificationTokenExpiresAt = new Date(
+      Date.now() + VERIFICATION_TOKEN_EXPIRY_MINUTES * 60 * 1000,
+    ).toISOString();
 
     const indexResult = await elasticClient.index({
       index: USERS_INDEX,
@@ -65,6 +72,8 @@ export async function register(formData: FormData) {
         verificationToken,
         verificationTokenExpiresAt,
         createdAt: new Date().toISOString(),
+        admin: isFirstUser,
+        storagePreference: "sessionStorage",
       },
       refresh: "wait_for",
     });
@@ -79,7 +88,6 @@ export async function register(formData: FormData) {
         email: email.toLowerCase(),
         name,
       },
-      "Web Browser",
       userAgent,
       ipAddress,
     );
@@ -129,7 +137,6 @@ export async function login(formData: FormData) {
 
     await createSession(
       { userId: userDoc._id as string, email: user.email, name: user.name },
-      "Web Browser",
       userAgent,
       ipAddress,
     );
@@ -168,7 +175,9 @@ export async function resendVerification(email: string) {
     }
 
     const verificationToken = crypto.randomBytes(16).toString("hex");
-    const verificationTokenExpiresAt = new Date(Date.now() + VERIFICATION_TOKEN_EXPIRY_MINUTES * 60 * 1000).toISOString();
+    const verificationTokenExpiresAt = new Date(
+      Date.now() + VERIFICATION_TOKEN_EXPIRY_MINUTES * 60 * 1000,
+    ).toISOString();
 
     await elasticClient.update({
       index: USERS_INDEX,
@@ -210,7 +219,9 @@ export async function verifyEmail(token: string) {
     const user = userDoc._source as UserDocument;
     const expiresAt = user.verificationTokenExpiresAt;
     if (expiresAt && new Date(expiresAt) < new Date()) {
-      return { error: "Verification link has expired. Please request a new one." };
+      return {
+        error: "Verification link has expired. Please request a new one.",
+      };
     }
 
     const userId = userDoc._id;
@@ -244,4 +255,24 @@ export async function revokeAllSessions(userId: string) {
   await revokeAllUserSessions(userId);
   await deleteSession();
   redirect("/auth");
+}
+
+export type StoragePreference = "none" | "sessionStorage" | "localStorage";
+
+export async function updateStoragePreference(
+  userId: string,
+  storagePreference: StoragePreference,
+) {
+  try {
+    await elasticClient.update({
+      index: USERS_INDEX,
+      id: userId,
+      doc: { storagePreference },
+      refresh: "wait_for",
+    });
+    return { success: true };
+  } catch (error) {
+    console.error("Update storage preference error:", error);
+    return { error: "Failed to update preference" };
+  }
 }

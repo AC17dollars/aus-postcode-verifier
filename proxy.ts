@@ -55,11 +55,16 @@ const proxy: NextProxy = async (req: NextRequest) => {
     return NextResponse.redirect(new URL("/verify-email", req.url));
   }
 
+  const isLogsPage = pathname === "/logs";
+  if (isLogsPage && !session.admin) {
+    return NextResponse.redirect(new URL("/", req.url));
+  }
+
   return NextResponse.next({ request: { headers } });
 };
 
 export default proxy;
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  matcher: ["/((?!_next/static|_next/image|_next/data|favicon.ico).*)"],
 };

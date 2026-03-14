@@ -18,12 +18,16 @@ export const addressVerifierSchema = z.object({
     .regex(/^\d{4}$/, "Postcode must be a 4-digit Australian postcode"),
   suburb: z
     .string()
+    .trim()
     .min(1, "Suburb is required")
     .max(100, "Suburb name is too long"),
   state: z
     .string()
     .min(1, "Please select a state")
-    .refine((s) => (AU_STATES as readonly string[]).includes(s), "Invalid state"),
+    .refine(
+      (s) => (AU_STATES as readonly string[]).includes(s),
+      "Invalid state",
+    ),
 });
 
 export type AddressVerifierFormValues = z.infer<typeof addressVerifierSchema>;

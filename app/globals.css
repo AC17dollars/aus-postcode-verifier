@@ -152,7 +152,11 @@
 }
 
 .leaflet-control-attribution {
-  background: color-mix(in oklch, var(--background) 85%, transparent) !important;
+  background: color-mix(
+    in oklch,
+    var(--background) 85%,
+    transparent
+  ) !important;
   color: color-mix(in oklch, var(--foreground) 45%, transparent) !important;
 }
 .leaflet-control-attribution a {
@@ -167,7 +171,11 @@
   border: none !important;
 }
 .leaflet-control-zoom a {
-  background: color-mix(in oklch, var(--background) 90%, transparent) !important;
+  background: color-mix(
+    in oklch,
+    var(--background) 90%,
+    transparent
+  ) !important;
   color: color-mix(in oklch, var(--foreground) 60%, transparent) !important;
   border: 1px solid color-mix(in oklch, var(--border) 80%, transparent) !important;
   width: 36px !important;
@@ -176,7 +184,11 @@
   font-size: 22px !important;
 }
 .leaflet-control-zoom a:hover {
-  background: color-mix(in oklch, var(--background) 95%, transparent) !important;
+  background: color-mix(
+    in oklch,
+    var(--background) 95%,
+    transparent
+  ) !important;
   color: color-mix(in oklch, var(--foreground) 90%, transparent) !important;
 }
 .leaflet-control-zoom-in,

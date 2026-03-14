@@ -17,7 +17,11 @@ interface VerifyEmailResultProps {
   readonly showLoginOnly?: boolean;
 }
 
-function VerifyEmailResult({ status, message, showLoginOnly = true }: VerifyEmailResultProps) {
+function VerifyEmailResult({
+  status,
+  message,
+  showLoginOnly = true,
+}: VerifyEmailResultProps) {
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-[#030303] text-white font-sans">
       <motion.div
@@ -47,7 +51,9 @@ function VerifyEmailResult({ status, message, showLoginOnly = true }: VerifyEmai
             className="flex flex-col items-center space-y-4"
           >
             <CheckCircle className="w-16 h-16 text-emerald-500" />
-            <h1 className="text-2xl font-bold tracking-tight">Email verified</h1>
+            <h1 className="text-2xl font-bold tracking-tight">
+              Email verified
+            </h1>
             <p className="text-gray-400">{message}</p>
             <Link
               href="/auth"
@@ -96,7 +102,10 @@ interface VerifyEmailResendProps {
 }
 
 function VerifyEmailResend({ email }: VerifyEmailResendProps) {
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [message, setMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
   const [isPending, startTransition] = useTransition();
 
   const handleResend = (e: { preventDefault: () => void }) => {
@@ -107,7 +116,10 @@ function VerifyEmailResend({ email }: VerifyEmailResendProps) {
       if (result.success) {
         setMessage({ type: "success", text: result.success });
       } else {
-        setMessage({ type: "error", text: result.error ?? "Something went wrong." });
+        setMessage({
+          type: "error",
+          text: result.error ?? "Something went wrong.",
+        });
       }
     });
   };
@@ -153,7 +165,9 @@ function VerifyEmailResend({ email }: VerifyEmailResendProps) {
           {message && (
             <p
               className={`text-sm ${
-                message.type === "success" ? "text-emerald-500" : "text-rose-500"
+                message.type === "success"
+                  ? "text-emerald-500"
+                  : "text-rose-500"
               }`}
             >
               {message.text}
@@ -208,7 +222,10 @@ function VerifyEmailLoggedInPopup({
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-[#030303] text-white font-sans">
-      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40" aria-hidden />
+      <div
+        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
+        aria-hidden
+      />
       <motion.div
         role="dialog"
         aria-modal

@@ -4,16 +4,19 @@ import { elasticClient, SESSIONS_INDEX, USERS_INDEX } from "./elasticsearch";
 
 const SESSION_EXPIRATION_DAYS = 14; // 14 days
 
+export type StoragePreference = "none" | "sessionStorage" | "localStorage";
+
 export interface SessionPayload {
   userId: string;
   email: string;
   name: string;
   verified: boolean;
+  admin?: boolean;
+  storagePreference?: StoragePreference;
 }
 
 export async function createSession(
   payload: Omit<SessionPayload, "verified">,
-  deviceInfo: string = "Unknown Device",
   userAgent: string = "Unknown Browser",
   ipAddress: string = "Unknown IP",
 ) {
@@ -26,7 +29,6 @@ export async function createSession(
     document: {
       userId: payload.userId,
       sessionToken,
-      deviceInfo,
       userAgent,
       ipAddress,
       expiresAt: expiresAt.toISOString(),
@@ -160,13 +162,26 @@ export async function validateSessionToken(
       email: string;
       name: string;
       verified?: boolean;
+      admin?: boolean;
+      storagePreference?: string;
     };
+
+    const storagePreference =
+      user.storagePreference as SessionPayload["storagePreference"];
+    const validPref =
+      storagePreference === "none" ||
+      storagePreference === "sessionStorage" ||
+      storagePreference === "localStorage"
+        ? storagePreference
+        : "sessionStorage";
 
     return {
       userId: session.userId,
       email: user.email,
       name: user.name,
       verified: user.verified === true,
+      admin: user.admin === true,
+      storagePreference: validPref,
     };
   } catch (error) {
     console.error("Session verification failed", error);
