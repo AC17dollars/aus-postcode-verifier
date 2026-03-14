@@ -5,7 +5,11 @@ import argon2 from "argon2";
 import crypto from "node:crypto";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { createSession, revokeAllUserSessions, logout } from "@/lib/session";
+import {
+  createSession,
+  revokeAllUserSessions,
+  deleteSession,
+} from "@/lib/session";
 
 const VERIFICATION_TOKEN_EXPIRY_MINUTES = 10;
 
@@ -51,7 +55,7 @@ export async function register(formData: FormData) {
     const verificationToken = crypto.randomBytes(16).toString("hex");
     const verificationTokenExpiresAt = new Date(Date.now() + VERIFICATION_TOKEN_EXPIRY_MINUTES * 60 * 1000).toISOString();
 
-    await elasticClient.index({
+    const indexResult = await elasticClient.index({
       index: USERS_INDEX,
       document: {
         name,
@@ -65,15 +69,25 @@ export async function register(formData: FormData) {
       refresh: "wait_for",
     });
 
-    console.log(
-      `[AUTH] Verification mail for ${email}: http://localhost:3000/verify?token=${verificationToken}`,
+    const requestHeaders = await headers();
+    const userAgent = requestHeaders.get("user-agent") || "Unknown Browser";
+    const ipAddress = requestHeaders.get("x-forwarded-for") || "Unknown IP";
+
+    await createSession(
+      {
+        userId: indexResult._id,
+        email: email.toLowerCase(),
+        name,
+      },
+      "Web Browser",
+      userAgent,
+      ipAddress,
     );
 
-    return {
-      success:
-        "Registration successful! Please check console for verification link.",
-    };
+    redirect("/verify-email");
   } catch (error) {
+    const err = error as { digest?: string };
+    if (err.digest?.startsWith("NEXT_REDIRECT")) throw error;
     console.error("Registration error:", error);
     return { error: "Internal server error" };
   }
@@ -121,15 +135,13 @@ export async function login(formData: FormData) {
     );
 
     if (!user.verified) {
-      return {
-        success: "Please verify your email to continue.",
-        needsVerification: true,
-        email: user.email,
-      };
+      redirect("/verify-email");
     }
 
-    return { success: `Welcome back, ${user.name}!` };
+    redirect("/");
   } catch (error) {
+    const err = error as { digest?: string };
+    if (err.digest?.startsWith("NEXT_REDIRECT")) throw error;
     console.error("Login error:", error);
     return { error: "Internal server error" };
   }
@@ -223,14 +235,13 @@ export async function verifyEmail(token: string) {
   }
 }
 
-export { logout };
-
-export async function logoutAndRedirectToAuth() {
-  await logout();
+export async function logout() {
+  await deleteSession();
   redirect("/auth");
 }
 
 export async function revokeAllSessions(userId: string) {
   await revokeAllUserSessions(userId);
-  await logout();
+  await deleteSession();
+  redirect("/auth");
 }

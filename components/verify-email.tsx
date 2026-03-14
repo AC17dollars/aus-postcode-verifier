@@ -7,7 +7,7 @@ import { CheckCircle, XCircle, Loader2, Mail, LogOut } from "lucide-react";
 import Link from "next/link";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { resendVerification, logoutAndRedirectToAuth } from "@/app/actions/auth";
+import { resendVerification, logout } from "@/app/actions/auth";
 
 export type VerifyEmailStatus = "loading" | "success" | "error";
 
@@ -173,7 +173,7 @@ function VerifyEmailResend({ email }: VerifyEmailResendProps) {
         </form>
 
         <div className="flex flex-col items-center pt-2">
-          <form action={logoutAndRedirectToAuth}>
+          <form action={logout}>
             <Button
               type="submit"
               variant="ghost"

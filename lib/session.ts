@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import crypto from "node:crypto";
 import { elasticClient, SESSIONS_INDEX, USERS_INDEX } from "./elasticsearch";
 
-const SESSION_EXPIRATION_DAYS = 30; // 30 days
+const SESSION_EXPIRATION_DAYS = 14; // 14 days
 
 export interface SessionPayload {
   userId: string;
@@ -21,7 +21,6 @@ export async function createSession(
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + SESSION_EXPIRATION_DAYS);
 
-  // Store session token in Elasticsearch
   await elasticClient.index({
     index: SESSIONS_INDEX,
     document: {
@@ -33,6 +32,7 @@ export async function createSession(
       expiresAt: expiresAt.toISOString(),
       createdAt: new Date().toISOString(),
     },
+    refresh: "wait_for",
   });
 
   const cookieStore = await cookies();
@@ -40,20 +40,19 @@ export async function createSession(
   cookieStore.set("session_token", sessionToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    sameSite: "strict",
     path: "/",
-    maxAge: SESSION_EXPIRATION_DAYS * 24 * 60 * 60, // 30 days
+    maxAge: SESSION_EXPIRATION_DAYS * 24 * 60 * 60,
   });
 
   return sessionToken;
 }
 
-export async function logout() {
+export async function deleteSession() {
   const cookieStore = await cookies();
   const sessionToken = cookieStore.get("session_token")?.value;
 
   if (sessionToken) {
-    // Revoke from Elasticsearch
     try {
       await elasticClient.deleteByQuery({
         index: SESSIONS_INDEX,
@@ -83,19 +82,48 @@ export async function revokeAllUserSessions(userId: string) {
   }
 }
 
-export async function getSession(): Promise<SessionPayload | null> {
-  const cookieStore = await cookies();
-  const sessionToken = cookieStore.get("session_token")?.value;
+const SESSION_PAYLOAD_HEADER = "x-session-payload";
 
-  if (!sessionToken) return null;
+/** Encodes session for proxy-set request header. */
+export function encodeSessionHeader(payload: SessionPayload): string {
+  return Buffer.from(JSON.stringify(payload), "utf-8").toString("base64url");
+}
 
+/** Decodes session from proxy-set request header. */
+export function decodeSessionHeader(value: string): SessionPayload | null {
   try {
-    // 1. Find session in Elasticsearch
+    const json = Buffer.from(value, "base64url").toString("utf-8");
+    const data = JSON.parse(json) as unknown;
+    if (
+      data &&
+      typeof data === "object" &&
+      "userId" in data &&
+      "email" in data &&
+      "name" in data &&
+      "verified" in data
+    ) {
+      return data as SessionPayload;
+    }
+  } catch {
+    // ignore
+  }
+  return null;
+}
+
+/** Header name set by proxy when session is valid. */
+export { SESSION_PAYLOAD_HEADER };
+
+/**
+ * Validates token against ES and returns session payload or null.
+ * Deletes invalid/expired session from ES. Used by proxy and getSession fallback.
+ */
+export async function validateSessionToken(
+  sessionToken: string,
+): Promise<SessionPayload | null> {
+  try {
     const searchResponse = await elasticClient.search({
       index: SESSIONS_INDEX,
-      query: {
-        term: { sessionToken },
-      },
+      query: { term: { sessionToken } },
     });
 
     const total = searchResponse.hits.total;
@@ -105,48 +133,34 @@ export async function getSession(): Promise<SessionPayload | null> {
     const sessionDoc = searchResponse.hits.hits[0];
     const session = sessionDoc._source as { userId: string; expiresAt: string };
 
-    // 2. Validate expiration
     if (new Date(session.expiresAt) < new Date()) {
-      // Token expired, delete from ES
       await elasticClient.delete({
         index: SESSIONS_INDEX,
         id: sessionDoc._id as string,
         refresh: true,
       });
-      cookieStore.delete("session_token");
       return null;
     }
 
-    // 3. Fetch user details payload
     const userResponse = await elasticClient.get({
       index: USERS_INDEX,
       id: session.userId,
     });
 
-    if (!userResponse.found) return null;
-    const user = userResponse._source as { email: string; name: string; verified?: boolean };
-
-    // 4. Update Elasticsearch record (Sliding Window) & Cookie
-    try {
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + SESSION_EXPIRATION_DAYS);
-
-      await elasticClient.update({
+    if (!userResponse.found) {
+      await elasticClient.delete({
         index: SESSIONS_INDEX,
         id: sessionDoc._id as string,
-        doc: {
-          expiresAt: expiresAt.toISOString(),
-        },
+        refresh: true,
       });
+      return null;
+    }
 
-      cookieStore.set("session_token", sessionToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        path: "/",
-        maxAge: SESSION_EXPIRATION_DAYS * 24 * 60 * 60,
-      });
-    } catch {}
+    const user = userResponse._source as {
+      email: string;
+      name: string;
+      verified?: boolean;
+    };
 
     return {
       userId: session.userId,
@@ -158,4 +172,20 @@ export async function getSession(): Promise<SessionPayload | null> {
     console.error("Session verification failed", error);
     return null;
   }
+}
+
+export async function getSession(): Promise<SessionPayload | null> {
+  const { headers } = await import("next/headers");
+  const headerStore = await headers();
+  const encoded = headerStore.get(SESSION_PAYLOAD_HEADER);
+  if (encoded) {
+    const session = decodeSessionHeader(encoded);
+    if (session) return session;
+  }
+
+  const cookieStore = await cookies();
+  const sessionToken = cookieStore.get("session_token")?.value;
+  if (!sessionToken) return null;
+
+  return validateSessionToken(sessionToken);
 }

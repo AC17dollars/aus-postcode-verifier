@@ -12,30 +12,21 @@ export default async function VerifyEmailPage({
 }: Readonly<{
   searchParams: Promise<{ token?: string; email?: string }>;
 }>) {
-  const session = await getSession();
   const { token } = await searchParams;
-
-  if (session?.verified && token) {
-    const result = await verifyEmail(token);
-    return (
-      <VerifyEmailLoggedInPopup
-        success={!!result.success}
-        message={result.success ?? result.error ?? "Something went wrong."}
-        email={"email" in result && result.email ? result.email : undefined}
-      />
-    );
-  }
-
-  if (session?.verified && !token) {
-    redirect("/");
-  }
+  const session = await getSession();
 
   if (token) {
     const result = await verifyEmail(token);
     if (result.success) {
       const sessionAfterVerify = await getSession();
-      if (sessionAfterVerify) {
-        redirect("/");
+      if (sessionAfterVerify?.verified) {
+        return (
+          <VerifyEmailLoggedInPopup
+            success
+            message={result.success}
+            email={"email" in result ? result.email : undefined}
+          />
+        );
       }
       return (
         <VerifyEmailResult
@@ -53,9 +44,13 @@ export default async function VerifyEmailPage({
     );
   }
 
-  if (!session) {
-    redirect("/auth");
+  if (session?.verified) {
+    redirect("/");
   }
 
-  return <VerifyEmailResend email={session.email} />;
+  if (session && !session.verified) {
+    return <VerifyEmailResend email={session.email} />;
+  }
+
+  redirect("/auth");
 }

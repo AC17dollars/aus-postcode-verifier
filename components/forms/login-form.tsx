@@ -1,7 +1,6 @@
 "use client";
 
 import { useRef, useEffect, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { useForm, type UseFormRegisterReturn } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { motion, AnimatePresence } from "framer-motion";
@@ -220,7 +219,6 @@ export function LoginForm({
   onSensitivityChange,
   setIsPasswordFocused,
 }: Readonly<LoginFormProps>) {
-  const router = useRouter();
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -252,17 +250,7 @@ export function LoginForm({
     formData.set("password", data.password);
     startTransition(async () => {
       const result = await login(formData);
-      if (result.error) {
-        setError(result.error);
-      } else if (result.success) {
-        if ("needsVerification" in result && result.needsVerification) {
-          router.push("/verify-email");
-          return;
-        }
-        setSuccess(result.success);
-        loginForm.reset();
-        setTimeout(() => router.push("/"), 1500);
-      }
+      if (result?.error) setError(result.error);
     });
   };
 
@@ -274,11 +262,7 @@ export function LoginForm({
     formData.set("password", data.password);
     startTransition(async () => {
       const result = await register(formData);
-      if (result.error) setError(result.error);
-      else if (result.success) {
-        setSuccess(result.success);
-        signupForm.reset();
-      }
+      if (result?.error) setError(result.error);
     });
   };
 
