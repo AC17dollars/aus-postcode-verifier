@@ -10,6 +10,7 @@ import {
   revokeAllUserSessions,
   deleteSession,
 } from "@/lib/session";
+import { sendVerificationEmail } from "@/lib/email";
 
 const VERIFICATION_TOKEN_EXPIRY_MINUTES = 10;
 
@@ -91,6 +92,14 @@ export async function register(formData: FormData) {
       userAgent,
       ipAddress,
     );
+
+    const sent = await sendVerificationEmail(
+      email.toLowerCase(),
+      verificationToken,
+    );
+    if (!sent.ok) {
+      console.error("[AUTH] Verification email failed:", sent.error);
+    }
 
     redirect("/verify-email");
   } catch (error) {
@@ -189,11 +198,11 @@ export async function resendVerification(email: string) {
       refresh: "wait_for",
     });
 
-    console.log(
-      `[AUTH] Verification mail for ${email}: http://localhost:3000/verify?token=${verificationToken}`,
-    );
-
-    return { success: "Verification email sent! Please check your console." };
+    const sent = await sendVerificationEmail(email, verificationToken);
+    if (!sent.ok) {
+      return { error: sent.error };
+    }
+    return { success: "Verification email sent! Check your inbox." };
   } catch (error) {
     console.error("Resend error:", error);
     return { error: "Internal server error" };

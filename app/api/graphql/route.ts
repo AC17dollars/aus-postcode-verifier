@@ -56,10 +56,7 @@ function getLogPayload(
   };
 }
 
-function filterBySuburb(
-  rawLocalities: unknown[],
-  suburb: string,
-): unknown[] {
+function filterBySuburb(rawLocalities: unknown[], suburb: string): unknown[] {
   const lowerSuburb = suburb.trim().toLowerCase();
   return rawLocalities.filter((loc) => {
     const locObj = loc as { location?: string };
@@ -67,9 +64,9 @@ function filterBySuburb(
   });
 }
 
-function parseLocalitiesFromResponse(
-  data: { localities?: { locality?: unknown } },
-): unknown[] {
+function parseLocalitiesFromResponse(data: {
+  localities?: { locality?: unknown };
+}): unknown[] {
   const raw = data?.localities?.locality;
   if (Array.isArray(raw)) return raw;
   if (raw !== undefined && raw !== null) return [raw];

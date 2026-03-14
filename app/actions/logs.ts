@@ -55,7 +55,8 @@ export async function getLogs(options: {
   const sortBy = options.sortBy ?? "requestedAt";
   const sortOrder = options.sortOrder ?? "desc";
 
-  const must: Array<{ match?: { name: string }; term?: { email: string } }> = [];
+  const must: Array<{ match?: { name: string }; term?: { email: string } }> =
+    [];
   if (options.searchName?.trim()) {
     must.push({ match: { name: options.searchName.trim() } });
   }
@@ -71,7 +72,13 @@ export async function getLogs(options: {
 
     const query =
       must.length > 0
-        ? { bool: { must } as { must: Array<{ match: { name: string } } | { term: { email: string } }> } }
+        ? {
+            bool: { must } as {
+              must: Array<
+                { match: { name: string } } | { term: { email: string } }
+              >;
+            },
+          }
         : { match_all: {} };
 
     const response = await elasticClient.search({

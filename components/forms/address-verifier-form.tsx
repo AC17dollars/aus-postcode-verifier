@@ -116,9 +116,9 @@ export function AddressVerifierForm({
         defaultValues.state === "")
     )
       return;
-  
+
     appliedInitialRef.current = true;
-  
+
     // Reset and notify in one microtask
     queueMicrotask(() => {
       form.reset(defaultValues);
@@ -171,7 +171,9 @@ export function AddressVerifierForm({
 
       if (result.error) {
         const raw =
-          result.error.graphQLErrors?.[0]?.message ?? result.error.message ?? "";
+          result.error.graphQLErrors?.[0]?.message ??
+          result.error.message ??
+          "";
         const message = raw.replace(/^\[GraphQL\]\s*/, "");
         updateStatus("error", message, []);
         return;
