@@ -29,9 +29,15 @@ export async function POST(request: NextRequest) {
   } catch {
     return Response.json({ error: "Invalid JSON body" }, { status: 400 });
   }
-  const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : undefined;
+  const email =
+    typeof body.email === "string"
+      ? body.email.trim().toLowerCase()
+      : undefined;
   if (!email) {
-    return Response.json({ error: "Missing or invalid email" }, { status: 400 });
+    return Response.json(
+      { error: "Missing or invalid email" },
+      { status: 400 },
+    );
   }
   const password =
     typeof body.password === "string" && body.password.length > 0
@@ -51,8 +57,7 @@ export async function POST(request: NextRequest) {
       query: { term: { email } },
     });
     const total = searchResponse.hits.total;
-    const totalValue =
-      typeof total === "number" ? total : (total?.value ?? 0);
+    const totalValue = typeof total === "number" ? total : (total?.value ?? 0);
     if (totalValue > 0) {
       return Response.json(
         { error: "User with this email already exists" },
@@ -91,9 +96,6 @@ export async function POST(request: NextRequest) {
     });
   } catch (err) {
     console.error("[TEST] create user error:", err);
-    return Response.json(
-      { error: "Internal server error" },
-      { status: 500 },
-    );
+    return Response.json({ error: "Internal server error" }, { status: 500 });
   }
 }

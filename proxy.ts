@@ -64,9 +64,7 @@ const proxy: NextProxy = async (req: NextRequest) => {
   return NextResponse.next({ request: { headers } });
 };
 
-
-const isTestRoute = (pathname: string) =>
-  pathname.startsWith("/api/test/");
+const isTestRoute = (pathname: string) => pathname.startsWith("/api/test/");
 
 const handler =
   env.ALLOW_TEST_ROUTES === "true"
@@ -95,7 +93,8 @@ const handler =
         headers.set(SESSION_PAYLOAD_HEADER, encodeSessionHeader(session));
 
         if (pathname === "/auth") {
-          if (session.verified) return NextResponse.redirect(new URL("/", req.url));
+          if (session.verified)
+            return NextResponse.redirect(new URL("/", req.url));
           return NextResponse.redirect(new URL("/verify-email", req.url));
         }
         if (!session.verified && !isVerifyPath(pathname)) {

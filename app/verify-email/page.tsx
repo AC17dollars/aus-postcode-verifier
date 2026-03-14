@@ -23,7 +23,8 @@ function renderTokenResult(
   const currentEmail = session?.email?.toLowerCase();
   const isDifferentUser =
     verifiedEmail && currentEmail && currentEmail !== verifiedEmail;
-  const isSameUser = verifiedEmail !== undefined && currentEmail === verifiedEmail;
+  const isSameUser =
+    verifiedEmail !== undefined && currentEmail === verifiedEmail;
 
   if (isDifferentUser) {
     return (

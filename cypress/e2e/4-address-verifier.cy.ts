@@ -33,7 +33,8 @@ describe("Address verifier - 3004 Melbourne VIC", () => {
     cy.intercept("POST", "**/api/graphql", (req) => {
       const body = req.body as { query?: string; variables?: { q?: string } };
       const isSearch =
-        body?.query?.includes("searchPostcode") && body?.variables?.q === "3004";
+        body?.query?.includes("searchPostcode") &&
+        body?.variables?.q === "3004";
       if (isSearch) {
         req.reply({
           statusCode: 200,

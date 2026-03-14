@@ -16,8 +16,7 @@ export async function GET(request: NextRequest) {
       query: { term: { email: email.toLowerCase() } },
     });
     const total = searchResponse.hits.total;
-    const totalValue =
-      typeof total === "number" ? total : (total?.value ?? 0);
+    const totalValue = typeof total === "number" ? total : (total?.value ?? 0);
     if (totalValue === 0) {
       return Response.json({ error: "User not found" }, { status: 404 });
     }
@@ -29,17 +28,11 @@ export async function GET(request: NextRequest) {
       return Response.json({ error: "Already verified" }, { status: 400 });
     }
     if (!user.verificationToken) {
-      return Response.json(
-        { error: "No verification token" },
-        { status: 404 },
-      );
+      return Response.json({ error: "No verification token" }, { status: 404 });
     }
     return Response.json({ token: user.verificationToken });
   } catch (err) {
     console.error("[TEST] verification-token error:", err);
-    return Response.json(
-      { error: "Internal server error" },
-      { status: 500 },
-    );
+    return Response.json({ error: "Internal server error" }, { status: 500 });
   }
 }

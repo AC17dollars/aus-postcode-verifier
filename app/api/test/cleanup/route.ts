@@ -45,8 +45,7 @@ async function deleteByEmail(email: string) {
       _source: false,
     });
     const total = searchResponse.hits.total;
-    const totalValue =
-      typeof total === "number" ? total : (total?.value ?? 0);
+    const totalValue = typeof total === "number" ? total : (total?.value ?? 0);
     if (totalValue === 0) {
       return Response.json({ deleted: 0, message: "User not found" });
     }
@@ -65,10 +64,7 @@ async function deleteByEmail(email: string) {
     });
   } catch (err) {
     console.error("[TEST] cleanup by email error:", err);
-    return Response.json(
-      { error: "Internal server error" },
-      { status: 500 },
-    );
+    return Response.json({ error: "Internal server error" }, { status: 500 });
   }
 }
 
@@ -108,10 +104,7 @@ async function deleteByEmailPrefix(prefix: string) {
     });
   } catch (err) {
     console.error("[TEST] cleanup by emailPrefix error:", err);
-    return Response.json(
-      { error: "Internal server error" },
-      { status: 500 },
-    );
+    return Response.json({ error: "Internal server error" }, { status: 500 });
   }
 }
 

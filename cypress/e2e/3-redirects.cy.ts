@@ -114,7 +114,9 @@ describe("Redirects and verify-email token pages", () => {
         }
         const token = tokenRes.body.token;
         cy.visit(`/verify-email?token=${token}`, { failOnStatusCode: false });
-        cy.contains("Account verified", { timeout: 10000 }).should("be.visible");
+        cy.contains("Account verified", { timeout: 10000 }).should(
+          "be.visible",
+        );
         cy.get("button").contains("Close").should("be.visible");
       });
     });
