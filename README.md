@@ -29,6 +29,10 @@ To learn more about Next.js, take a look at the following resources:
 
 You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
+## E2E Testing (Cypress)
+
+Run end-to-end tests: `pnpm run cy:open` (interactive) or `pnpm run test:e2e` (headless). Ensure port 3000 is free. Set `ALLOW_TEST_ROUTES=true` so test routes are available. E2E specs create users via `POST /api/test/users` (body: `{ email, password?, name?, verified?, admin? }`) and clean up with `DELETE /api/test/cleanup?emailPrefix=...` in `after()` hooks. Manual cleanup: `DELETE /api/test/cleanup?email=user@example.com` or `?emailPrefix=e2e-signup-`.
+
 ## Deploy on Vercel
 
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.

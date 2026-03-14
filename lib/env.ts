@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 const schema = z.object({
+  ALLOW_TEST_ROUTES: z.string().optional().default("false"),
   ELASTIC_NODE: z.url("ELASTIC_NODE must be a valid URL"),
   ELASTIC_API_KEY: z.string().min(1, "ELASTIC_API_KEY is required"),
   AUSPOST_API_URL: z.url("AUSPOST_API_URL must be a valid URL"),

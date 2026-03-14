@@ -56,19 +56,11 @@ function VerifyEmailResult({
             </h1>
             <p className="text-gray-400">{message}</p>
             <Link
-              href="/auth"
+              href={showLoginOnly ? "/auth" : "/"}
               className={`${buttonVariants({ variant: "ghost", size: "lg" })} w-full mt-4 h-12 rounded-xl font-bold bg-white text-black hover:bg-gray-200 hover:text-black`}
             >
               {showLoginOnly ? "Go to login" : "Go to dashboard"}
             </Link>
-            {!showLoginOnly && (
-              <Link
-                href="/auth"
-                className="text-sm text-gray-500 hover:text-white transition-colors"
-              >
-                Or sign in
-              </Link>
-            )}
           </motion.div>
         )}
 

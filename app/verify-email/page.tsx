@@ -7,6 +7,51 @@ import {
   VerifyEmailLoggedInPopup,
 } from "@/components/verify-email";
 
+function renderTokenResult(
+  result: { success: string; email?: string } | { error: string },
+  session: { email?: string } | null,
+) {
+  if ("error" in result) {
+    return (
+      <VerifyEmailResult
+        status="error"
+        message={result.error ?? "Something went wrong."}
+      />
+    );
+  }
+  const verifiedEmail = result.email?.toLowerCase();
+  const currentEmail = session?.email?.toLowerCase();
+  const isDifferentUser =
+    verifiedEmail && currentEmail && currentEmail !== verifiedEmail;
+  const isSameUser = verifiedEmail !== undefined && currentEmail === verifiedEmail;
+
+  if (isDifferentUser) {
+    return (
+      <VerifyEmailLoggedInPopup
+        success
+        message={result.success}
+        email={verifiedEmail}
+      />
+    );
+  }
+  if (isSameUser) {
+    return (
+      <VerifyEmailResult
+        status="success"
+        message={result.success}
+        showLoginOnly={false}
+      />
+    );
+  }
+  return (
+    <VerifyEmailResult
+      status="success"
+      message={result.success}
+      showLoginOnly
+    />
+  );
+}
+
 export default async function VerifyEmailPage({
   searchParams,
 }: Readonly<{
@@ -17,40 +62,12 @@ export default async function VerifyEmailPage({
 
   if (token) {
     const result = await verifyEmail(token);
-    if (result.success) {
-      const sessionAfterVerify = await getSession();
-      if (sessionAfterVerify?.verified) {
-        return (
-          <VerifyEmailLoggedInPopup
-            success
-            message={result.success}
-            email={"email" in result ? result.email : undefined}
-          />
-        );
-      }
-      return (
-        <VerifyEmailResult
-          status="success"
-          message={result.success}
-          showLoginOnly
-        />
-      );
-    }
-    return (
-      <VerifyEmailResult
-        status="error"
-        message={result.error ?? "Something went wrong."}
-      />
-    );
+    return renderTokenResult(result, session);
   }
 
-  if (session?.verified) {
-    redirect("/");
-  }
-
+  if (session?.verified) redirect("/");
   if (session && !session.verified) {
     return <VerifyEmailResend email={session.email} />;
   }
-
   redirect("/auth");
 }

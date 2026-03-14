@@ -68,8 +68,6 @@ export async function getLogs(options: {
 
   try {
     const sortField = SORT_FIELD_MAP[sortBy];
-    const esSort = sortField === "name.keyword" ? "name.keyword" : sortField;
-
     const query =
       must.length > 0
         ? {
@@ -85,7 +83,7 @@ export async function getLogs(options: {
       index: LOGS_INDEX,
       from: page * pageSize,
       size: pageSize + 1,
-      sort: [{ [esSort]: sortOrder }],
+      sort: [{ [sortField]: sortOrder }],
       query,
     });
 

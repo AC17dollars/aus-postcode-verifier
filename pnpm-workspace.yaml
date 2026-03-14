@@ -3,4 +3,5 @@ ignoredBuiltDependencies:
   - unrs-resolver
 onlyBuiltDependencies:
   - argon2
+  - cypress
   - msw

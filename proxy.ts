@@ -4,6 +4,7 @@ import {
   encodeSessionHeader,
   SESSION_PAYLOAD_HEADER,
 } from "@/lib/session";
+import { env } from "@/lib/env";
 
 function redirectToAuth(req: NextRequest, clearCookie = false) {
   const res = NextResponse.redirect(new URL("/auth", req.url));
@@ -63,7 +64,52 @@ const proxy: NextProxy = async (req: NextRequest) => {
   return NextResponse.next({ request: { headers } });
 };
 
-export default proxy;
+
+const isTestRoute = (pathname: string) =>
+  pathname.startsWith("/api/test/");
+
+const handler =
+  env.ALLOW_TEST_ROUTES === "true"
+    ? async function testProxy(req: NextRequest) {
+        const { pathname } = req.nextUrl;
+        if (isTestRoute(pathname)) return NextResponse.next();
+
+        const sessionToken = req.cookies.get("session_token")?.value;
+        if (!sessionToken) {
+          if (pathname === "/auth" || isVerifyPath(pathname))
+            return NextResponse.next();
+          return redirectToAuth(req);
+        }
+
+        const session = await validateSessionToken(sessionToken);
+        if (!session) {
+          if (pathname === "/auth" || isVerifyPath(pathname)) {
+            const res = NextResponse.next();
+            res.cookies.delete("session_token");
+            return res;
+          }
+          return redirectToAuth(req, true);
+        }
+
+        const headers = new Headers(req.headers);
+        headers.set(SESSION_PAYLOAD_HEADER, encodeSessionHeader(session));
+
+        if (pathname === "/auth") {
+          if (session.verified) return NextResponse.redirect(new URL("/", req.url));
+          return NextResponse.redirect(new URL("/verify-email", req.url));
+        }
+        if (!session.verified && !isVerifyPath(pathname)) {
+          return NextResponse.redirect(new URL("/verify-email", req.url));
+        }
+        if (pathname === "/logs" && !session.admin) {
+          return NextResponse.redirect(new URL("/", req.url));
+        }
+
+        return NextResponse.next({ request: { headers } });
+      }
+    : proxy;
+
+export default handler;
 
 export const config = {
   matcher: ["/((?!_next/static|_next/image|_next/data|favicon.ico).*)"],

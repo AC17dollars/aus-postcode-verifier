@@ -104,6 +104,9 @@ export async function sendVerificationEmail(
   to: string,
   token: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (env.ALLOW_TEST_ROUTES === "true") {
+    return { ok: true };
+  }
   const verifyUrl = `${env.APP_URL.replace(/\/$/, "")}/verify-email?token=${encodeURIComponent(token)}`;
   try {
     await transporter.sendMail({
