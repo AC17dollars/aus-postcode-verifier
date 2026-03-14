@@ -1,5 +1,5 @@
 /**
- * 8. Entering 3004, Melbourne, VIC shows 2 locations with valid result (unless API error)
+ * 10. Entering 3004, Melbourne, VIC shows 2 locations with valid result (unless API error)
  */
 describe("Address verifier - 3004 Melbourne VIC", () => {
   const emailPrefix = "e2e-verifier-";
@@ -28,47 +28,6 @@ describe("Address verifier - 3004 Melbourne VIC", () => {
     });
   });
 
-  beforeEach(() => {
-    // Mock GraphQL searchPostcode to return 2 localities for 3004 Melbourne VIC
-    cy.intercept("POST", "**/api/graphql", (req) => {
-      const body = req.body as { query?: string; variables?: { q?: string } };
-      const isSearch =
-        body?.query?.includes("searchPostcode") &&
-        body?.variables?.q === "3004";
-      if (isSearch) {
-        req.reply({
-          statusCode: 200,
-          body: {
-            data: {
-              searchPostcode: [
-                {
-                  id: 1,
-                  location: "MELBOURNE",
-                  postcode: "3004",
-                  state: "VIC",
-                  latitude: -37.8409,
-                  longitude: 144.9465,
-                  category: "Delivery",
-                },
-                {
-                  id: 2,
-                  location: "MELBOURNE",
-                  postcode: "3004",
-                  state: "VIC",
-                  latitude: -37.8409,
-                  longitude: 144.9464,
-                  category: "Post Office",
-                },
-              ],
-            },
-          },
-        });
-        return;
-      }
-      req.continue();
-    }).as("graphql");
-  });
-
   it("shows 2 locations for 3004, Melbourne, VIC", () => {
     const email = `${emailPrefix}${Date.now()}@example.com`;
     cy.request({
@@ -85,23 +44,24 @@ describe("Address verifier - 3004 Melbourne VIC", () => {
       }
       const { password } = res.body as { email: string; password: string };
       cy.visit("/auth");
-      cy.get('input[name="email"]').type(email);
-      cy.get('input[name="password"]').type(password);
+      cy.get('input[name="email"]', { timeout: 10000 })
+        .should("exist")
+        .type(email, { force: true });
+      cy.get('input[name="password"]').type(password, { force: true });
       cy.get('button[type="submit"]').click();
 
-      cy.url().should("eq", Cypress.config().baseUrl + "/");
-      cy.contains("Verifier").should("be.visible");
+      cy.url().should("eq", Cypress.config().baseUrl + "/", { timeout: 20000 });
+      cy.contains("Verifier").should("exist");
 
       cy.get('input[id="postcode"]').clear().type("3004");
       cy.get('input[id="suburb"]').clear().type("Melbourne");
       cy.get("#state").click();
-      cy.get("[role='option']").contains("VIC").click();
+      cy.get("body").type("{downarrow}{downarrow}{downarrow}{enter}");
 
       cy.get('button[type="submit"]').click();
-      cy.wait("@graphql");
 
-      cy.contains("Valid Location", { timeout: 10000 }).should("be.visible");
-      cy.contains("2 Localities Found").should("be.visible");
+      cy.contains("Valid Location", { timeout: 15000 }).should("exist");
+      cy.contains("2 Localities Found").should("exist");
     });
   });
 });

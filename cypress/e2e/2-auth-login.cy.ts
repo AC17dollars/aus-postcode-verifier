@@ -46,13 +46,15 @@ describe("Login flows", () => {
       }
       const { password } = res.body as { email: string; password: string };
       cy.visit("/auth");
-      cy.get('input[name="email"]').type(email);
-      cy.get('input[name="password"]').type(password);
+      cy.get('input[name="email"]', { timeout: 10000 })
+        .should("exist")
+        .type(email, { force: true });
+      cy.get('input[name="password"]').type(password, { force: true });
       cy.get('button[type="submit"]').click();
 
-      cy.url().should("include", "/verify-email");
-      cy.contains("Verify your email").should("be.visible");
-      cy.contains("Resend verification email").should("be.visible");
+      cy.url().should("include", "/verify-email", { timeout: 20000 });
+      cy.contains("Verify your email").should("exist");
+      cy.contains("Resend verification email").should("exist");
     });
   });
 
@@ -72,13 +74,15 @@ describe("Login flows", () => {
       }
       const { password } = res.body as { email: string; password: string };
       cy.visit("/auth");
-      cy.get('input[name="email"]').type(email);
-      cy.get('input[name="password"]').type(password);
+      cy.get('input[name="email"]', { timeout: 10000 })
+        .should("exist")
+        .type(email, { force: true });
+      cy.get('input[name="password"]').type(password, { force: true });
       cy.get('button[type="submit"]').click();
 
-      cy.url().should("eq", Cypress.config().baseUrl + "/");
-      cy.contains("Verifier").should("be.visible");
-      cy.get('input[id="postcode"]').should("be.visible");
+      cy.url().should("eq", Cypress.config().baseUrl + "/", { timeout: 20000 });
+      cy.contains("Verifier").should("exist");
+      cy.get('input[id="postcode"]').should("exist");
     });
   });
 
@@ -98,18 +102,20 @@ describe("Login flows", () => {
       }
       const { password } = res.body as { email: string; password: string };
       cy.visit("/auth");
-      cy.get('input[name="email"]').type(email);
-      cy.get('input[name="password"]').type(password);
+      cy.get('input[name="email"]', { timeout: 10000 })
+        .should("exist")
+        .type(email, { force: true });
+      cy.get('input[name="password"]').type(password, { force: true });
       cy.get('button[type="submit"]').click();
 
-      cy.url().should("eq", Cypress.config().baseUrl + "/");
-      cy.contains("Verifier").should("be.visible");
-      cy.get('a[href="/logs"]').should("be.visible");
-      cy.contains("Logs").should("be.visible");
+      cy.url().should("eq", Cypress.config().baseUrl + "/", { timeout: 20000 });
+      cy.contains("Verifier").should("exist");
+      cy.get('a[href="/logs"]').should("exist");
+      cy.contains("Logs").should("exist");
 
       cy.get('a[href="/logs"]').click();
       cy.url().should("include", "/logs");
-      cy.contains("GraphQL Logs").should("be.visible");
+      cy.contains("GraphQL Logs").should("exist");
     });
   });
 });

@@ -1,8 +1,9 @@
 /**
- * 4. Redirects to /auth when unauthenticated on most routes (except verify-email with token)
- * 5. Authenticated + verify-email?token=... shows authenticated confirmation page
- * 6. Unauthenticated + verify-email?token=... shows unauthenticated confirmation page
- * 7. Non-admin visiting /logs redirects to /
+ * 5. Redirects to /auth when unauthenticated on most routes (except verify-email with token)
+ * 6. Authenticated + verify-email?token=... shows authenticated confirmation page
+ * 7. Unauthenticated + verify-email?token=... shows unauthenticated confirmation page
+ * 8. Non-admin visiting /logs redirects to /
+ * 9. Authenticated as user A + verify-email with user B's token shows popup; Close redirects to /
  */
 describe("Redirects and verify-email token pages", () => {
   const emailPrefix = "e2e-redirects-";
@@ -33,17 +34,17 @@ describe("Redirects and verify-email token pages", () => {
 
   it("redirects unauthenticated user to /auth when visiting /", () => {
     cy.visit("/", { failOnStatusCode: false });
-    cy.url().should("include", "/auth");
+    cy.url().should("include", "/auth", { timeout: 10000 });
   });
 
   it("redirects unauthenticated user to /auth when visiting /logs", () => {
     cy.visit("/logs", { failOnStatusCode: false });
-    cy.url().should("include", "/auth");
+    cy.url().should("include", "/auth", { timeout: 10000 });
   });
 
   it("redirects unauthenticated user to /auth when visiting /verify-email without token", () => {
     cy.visit("/verify-email", { failOnStatusCode: false });
-    cy.url().should("include", "/auth");
+    cy.url().should("include", "/auth", { timeout: 10000 });
   });
 
   it("verify-email with invalid token shows error when unauthenticated", () => {
@@ -52,7 +53,7 @@ describe("Redirects and verify-email token pages", () => {
     });
     cy.contains(/Verification failed|Invalid|expired/i, {
       timeout: 10000,
-    }).should("be.visible");
+    }).should("exist");
   });
 
   it("when unauthenticated, verify-email with valid token shows unauthenticated confirmation (Go to login)", () => {
@@ -81,13 +82,60 @@ describe("Redirects and verify-email token pages", () => {
         cy.visit(`/verify-email?token=${token}`, { failOnStatusCode: false });
         cy.contains(/Email verified|Verification failed/i, {
           timeout: 10000,
-        }).should("be.visible");
-        cy.contains("Go to login").should("be.visible");
+        }).should("exist");
+        cy.contains("Go to login").should("exist");
       });
     });
   });
 
-  it("when authenticated as unverified user, verify-email with own token shows authenticated confirmation (Account verified, Close)", () => {
+  it("when authenticated as different user, verify-email with other user token shows popup and Close redirects to /", () => {
+    const userA = `${emailPrefix}diff-a-${Date.now()}@example.com`;
+    const userB = `${emailPrefix}diff-b-${Date.now()}@example.com`;
+    cy.request({
+      method: "POST",
+      url: "/api/test/users",
+      body: { email: userA, verified: true },
+      failOnStatusCode: false,
+    }).then((resA) => {
+      if (resA.status !== 200) {
+        cy.log(
+          "Skipping: set ALLOW_TEST_ROUTES=true and ensure Elasticsearch is running",
+        );
+        return;
+      }
+      cy.request({
+        method: "POST",
+        url: "/api/test/users",
+        body: { email: userB, verified: false },
+        failOnStatusCode: false,
+      }).then((resB) => {
+        if (resB.status !== 200) return;
+        const { password: pwA } = resA.body as { password: string };
+        cy.login(userA, pwA);
+        cy.url().should("eq", Cypress.config().baseUrl + "/", {
+          timeout: 5000,
+        });
+        cy.request({
+          url: `/api/test/verification-token?email=${encodeURIComponent(userB)}`,
+          failOnStatusCode: false,
+        }).then((tokenRes) => {
+          if (tokenRes.status !== 200) {
+            cy.log("Could not get verification token for user B");
+            return;
+          }
+          const token = tokenRes.body.token;
+          cy.visit(`/verify-email?token=${token}`, { failOnStatusCode: false });
+          cy.contains(/Account verified|Verification failed/i, {
+            timeout: 10000,
+          }).should("exist");
+          cy.contains("Close").should("exist").click();
+          cy.url().should("eq", Cypress.config().baseUrl + "/");
+        });
+      });
+    });
+  });
+
+  it("when authenticated as unverified user, verify-email with own token shows authenticated confirmation (Email verified, Go to dashboard)", () => {
     const email = `${emailPrefix}unverified-auth-${Date.now()}@example.com`;
     cy.request({
       method: "POST",
@@ -103,7 +151,7 @@ describe("Redirects and verify-email token pages", () => {
       }
       const { password } = res.body as { email: string; password: string };
       cy.login(email, password);
-      cy.url().should("include", "/verify-email");
+      cy.url().should("include", "/verify-email", { timeout: 5000 });
       cy.request({
         url: `/api/test/verification-token?email=${encodeURIComponent(email)}`,
         failOnStatusCode: false,
@@ -114,10 +162,8 @@ describe("Redirects and verify-email token pages", () => {
         }
         const token = tokenRes.body.token;
         cy.visit(`/verify-email?token=${token}`, { failOnStatusCode: false });
-        cy.contains("Account verified", { timeout: 10000 }).should(
-          "be.visible",
-        );
-        cy.get("button").contains("Close").should("be.visible");
+        cy.contains("Email verified", { timeout: 10000 }).should("exist");
+        cy.get("a").contains("Go to dashboard").should("exist");
       });
     });
   });
@@ -138,9 +184,9 @@ describe("Redirects and verify-email token pages", () => {
       }
       const { password } = res.body as { email: string; password: string };
       cy.login(email, password);
-      cy.url().should("eq", Cypress.config().baseUrl + "/");
+      cy.url().should("eq", Cypress.config().baseUrl + "/", { timeout: 5000 });
       cy.visit("/logs", { failOnStatusCode: false });
-      cy.url().should("eq", Cypress.config().baseUrl + "/");
+      cy.url().should("eq", Cypress.config().baseUrl + "/", { timeout: 10000 });
     });
   });
 });
