@@ -38,7 +38,8 @@ export function AddressVerifier() {
   const {
     form: storeForm,
     setForm: setStoreForm,
-    localities,
+    matchingLocalities,
+    otherLocalities,
     setLocalities,
     status,
     message,
@@ -56,11 +57,14 @@ export function AddressVerifier() {
   const handleStatusChange = (data: {
     status: AddressVerifierStatus;
     message: string;
-    localities: Locality[];
+    matching: Locality[];
+    others: Locality[];
   }) => {
     setStatus(data.status, data.message);
-    setLocalities(data.localities);
+    setLocalities(data.matching, data.others);
   };
+
+  const hasMapResults = matchingLocalities.length + otherLocalities.length > 0;
 
   if (!user) return null;
 
@@ -146,7 +150,7 @@ export function AddressVerifier() {
                   suburb: values.suburb ?? "",
                   state: values.state ?? "",
                 });
-                setLocalities([]);
+                setLocalities([], []);
                 setStatus("idle", "");
               }}
               status={status}
@@ -154,6 +158,7 @@ export function AddressVerifier() {
               onStatusChange={handleStatusChange}
               setIsFieldFocused={setIsFieldFocused}
               onShowMapRequested={() => setShowMapOnMobile(true)}
+              showMapWhenResultsExist={hasMapResults}
             />
           </div>
         </motion.div>
@@ -162,7 +167,11 @@ export function AddressVerifier() {
       <div
         className={`fixed inset-0 z-40 md:relative md:inset-auto md:flex-1 h-screen transition-transform duration-500 ease-in-out border-l border-white/5 ${showMapOnMobile ? "translate-x-0" : "translate-x-full md:translate-x-0"}`}
       >
-        <MapComponent localities={localities} showOnMobile={showMapOnMobile} />
+        <MapComponent
+          matchingLocalities={matchingLocalities}
+          otherLocalities={otherLocalities}
+          showOnMobile={showMapOnMobile}
+        />
 
         <div className="absolute top-6 left-6 z-[1000] md:hidden">
           <Button
@@ -185,8 +194,8 @@ export function AddressVerifier() {
                 System Status
               </p>
               <p className="text-sm font-bold text-white/80">
-                {status === "success"
-                  ? `${localities.length} Localities Found`
+                {hasMapResults
+                  ? `${matchingLocalities.length + otherLocalities.length} Localities Found`
                   : "Awaiting Data"}
               </p>
             </div>

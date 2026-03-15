@@ -30,7 +30,8 @@ export interface VerifierFormValues {
 
 interface VerifierState {
   form: VerifierFormValues;
-  localities: PersistedLocality[];
+  matchingLocalities: PersistedLocality[];
+  otherLocalities: PersistedLocality[];
   status: AddressVerifierStatus;
   message: string;
   showMapOnMobile: boolean;
@@ -38,7 +39,10 @@ interface VerifierState {
 
 interface VerifierActions {
   setForm: (form: Partial<VerifierFormValues>) => void;
-  setLocalities: (localities: PersistedLocality[]) => void;
+  setLocalities: (
+    matching: PersistedLocality[],
+    others: PersistedLocality[],
+  ) => void;
   setStatus: (status: AddressVerifierStatus, message?: string) => void;
   setShowMapOnMobile: (show: boolean) => void;
   reset: () => void;
@@ -52,7 +56,8 @@ const defaultForm: VerifierFormValues = {
 
 const initialState: VerifierState = {
   form: defaultForm,
-  localities: [],
+  matchingLocalities: [],
+  otherLocalities: [],
   status: "idle",
   message: "",
   showMapOnMobile: false,
@@ -124,7 +129,7 @@ function getStorageForPreference(pref: StoragePreference): WebStorage | null {
 
 type PersistedSlice = Pick<
   VerifierState,
-  "form" | "localities" | "status" | "message" | "showMapOnMobile"
+  "form" | "matchingLocalities" | "otherLocalities" | "status" | "message" | "showMapOnMobile"
 >;
 
 function makePersistStorage() {
@@ -166,7 +171,8 @@ export const useVerifierStore = create<FullState>()(
         set((s) => ({
           form: { ...s.form, ...form },
         })),
-      setLocalities: (localities) => set({ localities }),
+      setLocalities: (matching, others) =>
+        set({ matchingLocalities: matching, otherLocalities: others }),
       setStatus: (status, message = "") => set({ status, message }),
       setShowMapOnMobile: (showMapOnMobile) => set({ showMapOnMobile }),
       reset: () => set(initialState),
@@ -185,7 +191,8 @@ export const useVerifierStore = create<FullState>()(
       partialize: (state) =>
         ({
           form: state.form,
-          localities: state.localities,
+          matchingLocalities: state.matchingLocalities,
+          otherLocalities: state.otherLocalities,
           status: state.status,
           message: state.message,
           showMapOnMobile: state.showMapOnMobile,

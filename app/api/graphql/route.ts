@@ -29,17 +29,24 @@ const typeDefs = /* GraphQL */ `
     category: String
   }
 
+  type SearchPostcodeResult {
+    success: Boolean!
+    message: String
+    matching: [Locality!]!
+    others: [Locality!]!
+  }
+
   type Query {
-    searchPostcode(q: String!, state: String, suburb: String): [Locality]
+    searchPostcode(suburb: String!, state: String, postcode: String!): SearchPostcodeResult
   }
 `;
 
 function getLogPayload(
   context: GraphQLContext,
   session: SessionPayload,
-  q: string,
-  suburb: string | undefined,
+  suburb: string,
   state: string | undefined,
+  postcode: string,
 ) {
   const cookieHeader = context.request.headers.get("cookie");
   return {
@@ -50,18 +57,46 @@ function getLogPayload(
       context.request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
       context.request.headers.get("x-real-ip") ??
       "",
-    postcode: q,
+    postcode,
     suburb: suburb ?? "",
     state: state ?? "",
   };
 }
 
-function filterBySuburb(rawLocalities: unknown[], suburb: string): unknown[] {
-  const lowerSuburb = suburb.trim().toLowerCase();
-  return rawLocalities.filter((loc) => {
-    const locObj = loc as { location?: string };
-    return (locObj.location ?? "").toLowerCase().includes(lowerSuburb);
-  });
+interface NormalizedLocality {
+  id: number;
+  location: string;
+  postcode: string;
+  state: string;
+  latitude: number;
+  longitude: number;
+  category: string;
+}
+
+function toNumber(v: unknown): number {
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  if (typeof v === "string") return Number.parseFloat(v) || 0;
+  return 0;
+}
+
+function toString(v: unknown): string {
+  if (v == null) return "";
+  if (typeof v === "string") return v.trim();
+  if (typeof v === "number" || typeof v === "boolean") return String(v);
+  return "";
+}
+
+function normalizeLocality(raw: unknown, index: number): NormalizedLocality {
+  const o = (raw ?? {}) as Record<string, unknown>;
+  return {
+    id: typeof o.id === "number" ? o.id : index + 1,
+    location: toString(o.location ?? o.name ?? o.locality ?? ""),
+    postcode: toString(o.postcode ?? o.code ?? ""),
+    state: toString(o.state ?? ""),
+    latitude: toNumber(o.latitude ?? o.lat),
+    longitude: toNumber(o.longitude ?? o.lng ?? o.lon),
+    category: toString(o.category ?? o.type ?? ""),
+  };
 }
 
 function parseLocalitiesFromResponse(data: {
@@ -73,83 +108,122 @@ function parseLocalitiesFromResponse(data: {
   return [];
 }
 
+function splitMatchingAndOthers(
+  normalized: NormalizedLocality[],
+  postcode: string,
+): { matching: NormalizedLocality[]; others: NormalizedLocality[] } {
+  const q = postcode.trim();
+  const matching: NormalizedLocality[] = [];
+  const others: NormalizedLocality[] = [];
+  for (const loc of normalized) {
+    if ((loc.postcode ?? "").trim() === q) {
+      matching.push(loc);
+    } else {
+      others.push(loc);
+    }
+  }
+  return { matching, others };
+}
+
+async function fetchAusPostLocalities(url: URL): Promise<unknown[]> {
+  const response = await fetch(url.toString(), {
+    headers: { Authorization: `Bearer ${env.AUSPOST_API_KEY}` },
+  });
+  if (!response.ok) throw createGraphQLError("Address service error. Try again.");
+  let data: { localities?: { locality?: unknown } };
+  try {
+    data = (await response.json()) as { localities?: { locality?: unknown } };
+  } catch (parseError) {
+    console.error("Address API invalid JSON:", parseError);
+    throw createGraphQLError("Invalid response from address service.");
+  }
+  return parseLocalitiesFromResponse(data);
+}
+
 const resolvers = {
   Query: {
     searchPostcode: async (
       _: unknown,
-      { q, state, suburb }: { q: string; state?: string; suburb?: string },
+      {
+        suburb,
+        state,
+        postcode,
+      }: { suburb: string; state?: string; postcode: string },
       context: GraphQLContext,
     ) => {
       const session = await getSession();
       if (!session) throw createGraphQLError("Unauthorized");
 
       const url = new URL(env.AUSPOST_API_URL);
-      url.searchParams.append("q", q);
-      if (state) url.searchParams.append("state", state);
+      url.searchParams.append("q", suburb.trim());
+      if (state?.trim()) url.searchParams.append("state", state.trim());
 
-      const logPayload = getLogPayload(context, session, q, suburb, state);
+      const logPayload = getLogPayload(
+        context,
+        session,
+        suburb.trim(),
+        state,
+        postcode.trim(),
+      );
 
       try {
-        let response: Response;
+        let rawLocalities: unknown[];
         try {
-          response = await fetch(url.toString(), {
-            headers: {
-              Authorization: `Bearer ${env.AUSPOST_API_KEY}`,
-            },
-          });
+          rawLocalities = await fetchAusPostLocalities(url);
         } catch (fetchError) {
           console.error("Address API fetch error:", fetchError);
-          throw createGraphQLError("Address service unavailable. Try again.");
+          throw fetchError instanceof GraphQLError
+            ? fetchError
+            : createGraphQLError("Address service unavailable. Try again.");
         }
-
-        if (!response.ok) {
-          throw createGraphQLError("Address service error. Try again.");
-        }
-
-        let data: { localities?: { locality?: unknown } };
-        try {
-          data = (await response.json()) as {
-            localities?: { locality?: unknown };
-          };
-        } catch (parseError) {
-          console.error("Address API invalid JSON:", parseError);
-          throw createGraphQLError("Invalid response from address service.");
-        }
-
-        const rawLocalities = parseLocalitiesFromResponse(data);
 
         if (rawLocalities.length === 0) {
-          throw createGraphQLError("Invalid postcode and state combination.");
+          const stateLabel = (state ?? "").trim() || "the given state";
+          const message = `${suburb.trim()} doesn't exist in ${stateLabel}`;
+          await logGraphQLAttempt({
+            ...logPayload,
+            success: false,
+            errorMessage: message,
+          }).catch((e) => console.error("GraphQL log write failed:", e));
+          return {
+            success: false,
+            message,
+            matching: [],
+            others: [],
+          };
         }
 
-        const suburbTrimmed = suburb?.trim();
-        const result = suburbTrimmed
-          ? filterBySuburb(rawLocalities, suburbTrimmed)
-          : rawLocalities;
+        const normalized = rawLocalities.map((raw, i) =>
+          normalizeLocality(raw, i),
+        );
+        const { matching, others } = splitMatchingAndOthers(
+          normalized,
+          postcode.trim(),
+        );
 
-        if (suburbTrimmed && result.length === 0) {
-          throw createGraphQLError("Suburb not found for postcode.");
-        }
-
-        // Await so serverless (e.g. production custom domain) doesn't terminate before log is stored
         await logGraphQLAttempt({
           ...logPayload,
           success: true,
-        }).catch((e) => console.error("[GraphQL] log write failed:", e));
+        }).catch((e) => console.error("GraphQL log write failed:", e));
 
-        return result;
+        return { success: true, message: null, matching, others };
       } catch (err) {
+        if (err instanceof GraphQLError) {
+          await logGraphQLAttempt({
+            ...logPayload,
+            success: false,
+            errorMessage: err.message,
+          }).catch((e) => console.error("GraphQL log write failed:", e));
+          throw err;
+        }
         const message =
           err instanceof Error ? err.message : "Request failed. Try again.";
-
         await logGraphQLAttempt({
           ...logPayload,
           success: false,
           errorMessage: message,
-        }).catch((e) => console.error("[GraphQL] log write failed:", e));
-
-        if (err instanceof GraphQLError) throw err;
-        throw createGraphQLError("Unexpected error.");
+        }).catch((e) => console.error("GraphQL log write failed:", e));
+        throw createGraphQLError(message);
       }
     },
   },

@@ -31,15 +31,28 @@ import {
 } from "@/components/ui/select";
 
 const SEARCH_QUERY = `
-  query SearchPostcode($q: String!, $state: String, $suburb: String) {
-    searchPostcode(q: $q, state: $state, suburb: $suburb) {
-      id
-      location
-      postcode
-      state
-      latitude
-      longitude
-      category
+  query SearchPostcode($suburb: String!, $state: String, $postcode: String!) {
+    searchPostcode(suburb: $suburb, state: $state, postcode: $postcode) {
+      success
+      message
+      matching {
+        id
+        location
+        postcode
+        state
+        latitude
+        longitude
+        category
+      }
+      others {
+        id
+        location
+        postcode
+        state
+        latitude
+        longitude
+        category
+      }
     }
   }
 `;
@@ -64,10 +77,12 @@ export interface AddressVerifierFormProps {
   onStatusChange: (data: {
     status: AddressVerifierStatus;
     message: string;
-    localities: Locality[];
+    matching: Locality[];
+    others: Locality[];
   }) => void;
   setIsFieldFocused: (focused: boolean) => void;
   onShowMapRequested?: () => void;
+  showMapWhenResultsExist?: boolean;
 }
 
 const inputClass =
@@ -89,6 +104,7 @@ export function AddressVerifierForm({
   onStatusChange,
   setIsFieldFocused,
   onShowMapRequested,
+  showMapWhenResultsExist = false,
 }: Readonly<AddressVerifierFormProps>) {
   const client = useClient();
   const [localStatus, setLocalStatus] = useState<AddressVerifierStatus>("idle");
@@ -137,53 +153,77 @@ export function AddressVerifierForm({
   const updateStatus = (
     nextStatus: AddressVerifierStatus,
     nextMessage: string,
-    nextLocalities: Locality[] = [],
+    matching: Locality[] = [],
+    others: Locality[] = [],
   ) => {
     setLocalStatus(nextStatus);
     setLocalMessage(nextMessage);
     onStatusChange({
       status: nextStatus,
       message: nextMessage,
-      localities: nextLocalities,
+      matching,
+      others,
     });
   };
 
   const resetForm = () => {
     form.reset({ postcode: "", suburb: "", state: "" });
-    updateStatus("idle", "", []);
+    updateStatus("idle", "", [], []);
   };
 
   const onSubmit = async (data: AddressVerifierFormValues) => {
-    updateStatus("loading", "", []);
+    updateStatus("loading", "", [], []);
 
     try {
       const result = await client
         .query(
           SEARCH_QUERY,
           {
-            q: data.postcode.trim(),
+            suburb: data.suburb?.trim() ?? "",
             state: data.state || undefined,
-            suburb: data.suburb?.trim() || undefined,
+            postcode: data.postcode.trim(),
           },
           status === "error" ? { requestPolicy: "network-only" } : undefined,
         )
         .toPromise();
 
       if (result.error) {
-        const raw =
+        const message =
           result.error.graphQLErrors?.[0]?.message ??
           result.error.message ??
-          "";
-        const message = raw.replace(/^\[GraphQL\]\s*/, "");
-        updateStatus("error", message, []);
+          "Request failed. Try again.";
+        updateStatus("error", message, [], []);
         return;
       }
 
-      const results = (result.data?.searchPostcode ?? []) as Locality[];
-      const message = results.length ? "Valid Location" : "No results";
-      updateStatus(results.length ? "success" : "error", message, results);
+      const searchResult = result.data?.searchPostcode as
+        | {
+            success: boolean;
+            message: string | null;
+            matching: Locality[];
+            others: Locality[];
+          }
+        | undefined;
+      const success = searchResult?.success ?? false;
+      const message = searchResult?.message ?? null;
+      const matching = searchResult?.matching ?? [];
+      const others = searchResult?.others ?? [];
+      const hasMatching = matching.length > 0;
+      const hasAny = matching.length > 0 || others.length > 0;
+
+      if (!success && message) {
+        updateStatus("error", message, [], []);
+        return;
+      }
+      if (hasMatching) {
+        updateStatus("success", "Valid postcode", matching, others);
+      } else if (hasAny) {
+        updateStatus("error", "No exact postcode found.", matching, others);
+      } else {
+        updateStatus("error", "No results", [], []);
+      }
     } catch {
-      updateStatus("error", "Connection Error", []);
+      updateStatus("error", "Connection Error", [], []);
     }
   };
 
@@ -313,6 +353,7 @@ export function AddressVerifierForm({
         message={message}
         isSubmitting={form.formState.isSubmitting}
         onShowMapRequested={onShowMapRequested}
+        showMapWhenResultsExist={showMapWhenResultsExist}
       />
     </form>
   );
@@ -323,6 +364,7 @@ interface StatusAndSubmitSectionProps {
   readonly message: string;
   readonly isSubmitting: boolean;
   readonly onShowMapRequested?: () => void;
+  readonly showMapWhenResultsExist?: boolean;
 }
 
 function StatusAndSubmitSection({
@@ -330,6 +372,7 @@ function StatusAndSubmitSection({
   message,
   isSubmitting,
   onShowMapRequested,
+  showMapWhenResultsExist = false,
 }: StatusAndSubmitSectionProps) {
   const showResult = status === "success" || status === "error";
   const isSuccess = status === "success";
@@ -373,7 +416,7 @@ function StatusAndSubmitSection({
           )}
         </Button>
       </div>
-      {onShowMapRequested && status === "success" && (
+      {onShowMapRequested && (status === "success" || showMapWhenResultsExist) && (
         <motion.button
           type="button"
           initial={{ opacity: 0, y: 10 }}

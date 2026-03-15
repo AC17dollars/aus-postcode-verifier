@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Mail, MapPin, Truck } from "lucide-react";
 import {
   MapContainer,
   TileLayer,
@@ -35,28 +36,59 @@ function useIsDesktop(): boolean {
   return isDesktop;
 }
 
-interface Locality {
+export interface Locality {
   id: number;
   location: string;
   postcode: string;
   state: string;
   latitude: number;
   longitude: number;
+  category: string;
+}
+
+function CategoryIcon({
+  category,
+  size = 14,
+  className,
+}: Readonly<{
+  category: string;
+  size?: number;
+  className?: string;
+}>) {
+  const c = (category ?? "").trim().toLowerCase();
+  if (c.includes("post office") || c.includes("post office box") || c === "pob")
+    return <Mail size={size} className={className} />;
+  if (c.includes("delivery area") || c.includes("delivery"))
+    return <Truck size={size} className={className} />;
+  return <MapPin size={size} className={className} />;
+}
+
+function getCategoryLabel(category: string): string {
+  const c = (category ?? "").trim();
+  if (c) return c;
+  return "Other";
 }
 
 interface MapComponentProps {
-  readonly localities: Locality[];
+  readonly matchingLocalities: Locality[];
+  readonly otherLocalities: Locality[];
   readonly showOnMobile: boolean;
 }
 
 function MapAutoAdjuster({
-  localities,
+  matchingLocalities,
+  otherLocalities,
   showOnMobile,
 }: {
-  localities: Locality[];
+  matchingLocalities: Locality[];
+  otherLocalities: Locality[];
   showOnMobile: boolean;
 }) {
   const map = useMap();
+  const localitiesForBounds = useMemo(() => {
+    if (matchingLocalities.length > 0) return matchingLocalities;
+    return [...matchingLocalities, ...otherLocalities];
+  }, [matchingLocalities, otherLocalities]);
 
   useEffect(() => {
     if (showOnMobile) {
@@ -68,15 +100,15 @@ function MapAutoAdjuster({
   }, [showOnMobile, map]);
 
   useEffect(() => {
-    if (localities.length > 0) {
-      const bounds = localities.map(
+    if (localitiesForBounds.length > 0) {
+      const bounds = localitiesForBounds.map(
         (loc) => [loc.latitude, loc.longitude] as [number, number],
       );
       map.fitBounds(bounds, { padding: [80, 80], maxZoom: 14 });
     } else {
       map.setView([-25.2744, 133.7751], 4);
     }
-  }, [localities, map]);
+  }, [localitiesForBounds, map]);
 
   return null;
 }
@@ -91,11 +123,22 @@ function isValidPosition(position: [number, number]): boolean {
   );
 }
 
-const DivMarker: React.FC<{ position: [number, number]; label?: string }> = ({
-  position,
-  label,
-}) => {
+const TOOLTIP_ICON_SIZE = 14;
+
+const DivMarker: React.FC<{
+  position: [number, number];
+  loc: Locality;
+  isMatching: boolean;
+}> = ({ position, loc, isMatching }) => {
   if (!isValidPosition(position)) return null;
+  const color = isMatching ? "#22c55e" : "#f97316";
+  const tooltipClass = isMatching
+    ? "custom-tooltip custom-tooltip-matching"
+    : "custom-tooltip custom-tooltip-other";
+  const markerClass = isMatching
+    ? "custom-marker custom-marker-matching"
+    : "custom-marker custom-marker-other";
+  const categoryLabel = getCategoryLabel(loc.category);
   return (
     <Marker
       position={position}
@@ -103,30 +146,42 @@ const DivMarker: React.FC<{ position: [number, number]; label?: string }> = ({
         new (
           globalThis as unknown as { L: typeof import("leaflet") }
         ).L.DivIcon({
-          className: "custom-marker",
-          html: `<div class="w-3 h-3 bg-indigo-500 rounded-full border-2 border-white shadow-lg"></div>`,
+          className: markerClass,
+          html: `<div class="w-3 h-3 rounded-full border-2 border-white shadow-lg" style="background-color: ${color}"></div>`,
           iconSize: [12, 12],
           iconAnchor: [6, 6],
         })
       }
     >
-      {label && (
-        <Tooltip
-          permanent
-          direction="top"
-          className="custom-tooltip"
-          offset={[0, -12]}
-          opacity={1}
-        >
-          {label}
-        </Tooltip>
-      )}
+      <Tooltip
+        permanent
+        direction="top"
+        className={tooltipClass}
+        offset={[0, -12]}
+        opacity={1}
+      >
+        <div className="custom-tooltip-inner flex flex-col gap-0.5 text-left">
+          <div className="flex items-center gap-2 min-w-0">
+            <CategoryIcon
+              category={loc.category}
+              size={TOOLTIP_ICON_SIZE}
+              className="shrink-0 opacity-90"
+            />
+            <span className="custom-tooltip-name font-bold leading-tight whitespace-nowrap">{loc.location}</span>
+          </div>
+          <div className="custom-tooltip-sub text-[10px] leading-tight">
+            {categoryLabel}
+            {loc.postcode ? ` · ${loc.postcode}` : ""}
+          </div>
+        </div>
+      </Tooltip>
     </Marker>
   );
 };
 
 export function MapComponent({
-  localities,
+  matchingLocalities,
+  otherLocalities,
   showOnMobile,
 }: Readonly<MapComponentProps>) {
   const isDesktop = useIsDesktop();
@@ -142,9 +197,10 @@ export function MapComponent({
     return () => clearTimeout(timer);
   }, [isPanelVisible]);
 
-  const localitiesWithValidCoords = localities.filter((loc) =>
-    isValidPosition([loc.latitude, loc.longitude]),
-  );
+  const withValidCoords = (loc: Locality) =>
+    isValidPosition([loc.latitude, loc.longitude]);
+  const matchingValid = matchingLocalities.filter(withValidCoords);
+  const othersValid = otherLocalities.filter(withValidCoords);
 
   return (
     <div className="w-full h-full relative z-0 min-h-0">
@@ -167,17 +223,27 @@ export function MapComponent({
           <ZoomControl position="bottomright" />
 
           <FeatureGroup>
-            {localitiesWithValidCoords.map((loc) => (
+            {matchingValid.map((loc) => (
               <DivMarker
-                key={loc.id}
+                key={`m-${loc.id}-${loc.latitude}-${loc.longitude}`}
                 position={[loc.latitude, loc.longitude]}
-                label={loc.location}
+                loc={loc}
+                isMatching={true}
+              />
+            ))}
+            {othersValid.map((loc) => (
+              <DivMarker
+                key={`o-${loc.id}-${loc.latitude}-${loc.longitude}`}
+                position={[loc.latitude, loc.longitude]}
+                loc={loc}
+                isMatching={false}
               />
             ))}
           </FeatureGroup>
 
           <MapAutoAdjuster
-            localities={localitiesWithValidCoords}
+            matchingLocalities={matchingValid}
+            otherLocalities={othersValid}
             showOnMobile={showOnMobile}
           />
         </MapContainer>

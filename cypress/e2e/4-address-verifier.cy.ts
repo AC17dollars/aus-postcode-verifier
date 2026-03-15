@@ -60,7 +60,7 @@ describe("Address verifier - 3004 Melbourne VIC", () => {
 
       cy.get('button[type="submit"]').click();
 
-      cy.contains("Valid Location", { timeout: 15000 }).should("exist");
+      cy.contains("Valid postcode", { timeout: 15000 }).should("exist");
       cy.contains("2 Localities Found").should("exist");
     });
   });
