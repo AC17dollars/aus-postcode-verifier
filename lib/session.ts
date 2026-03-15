@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { cookies } from "next/headers";
 import crypto from "node:crypto";
 import { elasticClient, SESSIONS_INDEX, USERS_INDEX } from "./elasticsearch";
@@ -189,7 +190,7 @@ export async function validateSessionToken(
   }
 }
 
-export async function getSession(): Promise<SessionPayload | null> {
+async function getSessionUncached(): Promise<SessionPayload | null> {
   const { headers } = await import("next/headers");
   const headerStore = await headers();
   const encoded = headerStore.get(SESSION_PAYLOAD_HEADER);
@@ -204,3 +205,6 @@ export async function getSession(): Promise<SessionPayload | null> {
 
   return validateSessionToken(sessionToken);
 }
+
+/** Cached per request so layout and pages can call it without duplicate work. */
+export const getSession = cache(getSessionUncached);

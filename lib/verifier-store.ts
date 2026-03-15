@@ -2,8 +2,13 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import {
+  type StoragePreference,
+  STORAGE_PREF_ATTR,
+  normalizeStoragePreference,
+} from "./storage-pref";
 
-export type StoragePreference = "none" | "sessionStorage" | "localStorage";
+export type { StoragePreference } from "./storage-pref";
 
 export interface PersistedLocality {
   id: number;
@@ -53,8 +58,15 @@ const initialState: VerifierState = {
   showMapOnMobile: false,
 };
 
+function getInitialStoragePreference(): StoragePreference {
+  if (globalThis.document === undefined) return "sessionStorage";
+  const el = globalThis.document.querySelector(`[${STORAGE_PREF_ATTR}]`);
+  const value = el?.getAttribute(STORAGE_PREF_ATTR);
+  return normalizeStoragePreference(value);
+}
+
 const storagePreferenceRef: { current: StoragePreference } = {
-  current: "sessionStorage",
+  current: getInitialStoragePreference(),
 };
 
 export const PERSIST_KEY = "verifier-state";

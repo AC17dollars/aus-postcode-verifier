@@ -21,6 +21,7 @@ import {
   useVerifierStore,
   setStoragePreferenceForPersistence,
 } from "@/lib/verifier-store";
+import { useSession } from "@/components/session-provider";
 import { SettingsModal } from "@/components/settings-modal";
 
 import dynamic from "next/dynamic";
@@ -29,19 +30,10 @@ const MapComponent = dynamic(
   { ssr: false },
 );
 
-interface AddressVerifierProps {
-  readonly user: {
-    name: string;
-    email: string;
-    userId: string;
-    admin?: boolean;
-    storagePreference?: "none" | "sessionStorage" | "localStorage";
-  };
-}
-
-export function AddressVerifier({ user }: Readonly<AddressVerifierProps>) {
+export function AddressVerifier() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [isFieldFocused, setIsFieldFocused] = useState(false);
+  const user = useSession();
 
   const {
     form: storeForm,
@@ -57,9 +49,9 @@ export function AddressVerifier({ user }: Readonly<AddressVerifierProps>) {
 
   useEffect(() => {
     setStoragePreferenceForPersistence(
-      user.storagePreference ?? "sessionStorage",
+      user?.storagePreference ?? "sessionStorage",
     );
-  }, [user.storagePreference]);
+  }, [user?.storagePreference]);
 
   const handleStatusChange = (data: {
     status: AddressVerifierStatus;
@@ -69,6 +61,8 @@ export function AddressVerifier({ user }: Readonly<AddressVerifierProps>) {
     setStatus(data.status, data.message);
     setLocalities(data.localities);
   };
+
+  if (!user) return null;
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row relative bg-[#050505] font-sans selection:bg-white/20 overflow-hidden">
