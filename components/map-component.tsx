@@ -125,6 +125,30 @@ function isValidPosition(position: [number, number]): boolean {
 
 const TOOLTIP_ICON_SIZE = 14;
 
+function to4Decimals(n: number): number {
+  return Math.round(n * 1e4) / 1e4;
+}
+
+function openGoogleMapsDirections(destLat: number, destLng: number) {
+  const lat = to4Decimals(destLat);
+  const lng = to4Decimals(destLng);
+  const dest = `${lat},${lng}`;
+  if (!navigator.geolocation) {
+    window.open(`https://www.google.com/maps/search/?api=1&query=${dest}`, "_blank", "noopener,noreferrer");
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      const origin = `${to4Decimals(pos.coords.latitude)},${to4Decimals(pos.coords.longitude)}`;
+      const url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${encodeURIComponent(dest)}`;
+      window.open(url, "_blank", "noopener,noreferrer");
+    },
+    () => {
+      window.open(`https://www.google.com/maps?q=${dest}`, "_blank", "noopener,noreferrer");
+    },
+  );
+}
+
 const DivMarker: React.FC<{
   position: [number, number];
   loc: Locality;
@@ -139,6 +163,10 @@ const DivMarker: React.FC<{
     ? "custom-marker custom-marker-matching"
     : "custom-marker custom-marker-other";
   const categoryLabel = getCategoryLabel(loc.category);
+  const handleLabelClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    openGoogleMapsDirections(loc.latitude, loc.longitude);
+  };
   return (
     <Marker
       position={position}
@@ -160,7 +188,11 @@ const DivMarker: React.FC<{
         offset={[0, -12]}
         opacity={1}
       >
-        <div className="custom-tooltip-inner flex flex-col gap-0.5 text-left">
+        <button
+          type="button"
+          onClick={handleLabelClick}
+          className="custom-tooltip-inner custom-tooltip-btn flex flex-col gap-0.5 text-left cursor-pointer hover:opacity-90 transition-opacity w-full"
+        >
           <div className="flex items-center gap-2 min-w-0">
             <CategoryIcon
               category={loc.category}
@@ -173,7 +205,7 @@ const DivMarker: React.FC<{
             {categoryLabel}
             {loc.postcode ? ` · ${loc.postcode}` : ""}
           </div>
-        </div>
+        </button>
       </Tooltip>
     </Marker>
   );

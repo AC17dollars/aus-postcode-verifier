@@ -145,13 +145,20 @@ export function AddressVerifier() {
             <AddressVerifierForm
               defaultValues={storeForm}
               onFormValuesChange={(values) => {
-                setStoreForm({
+                const nextForm = {
                   postcode: values.postcode ?? "",
                   suburb: values.suburb ?? "",
                   state: values.state ?? "",
-                });
-                setLocalities([], []);
-                setStatus("idle", "");
+                };
+                setStoreForm(nextForm);
+                const formUnchanged =
+                  storeForm.postcode === nextForm.postcode &&
+                  storeForm.suburb === nextForm.suburb &&
+                  storeForm.state === nextForm.state;
+                if (!formUnchanged) {
+                  setLocalities([], []);
+                  setStatus("idle", "");
+                }
               }}
               status={status}
               message={message}
