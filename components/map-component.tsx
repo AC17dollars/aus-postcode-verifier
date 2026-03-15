@@ -152,8 +152,10 @@ export function MapComponent({
         <MapContainer
           center={[-25.2744, 133.7751]}
           zoom={4}
+          maxBounds={[[-90, -Infinity], [90, +Infinity]]}
+          maxBoundsViscosity={1}
           zoomControl={false}
-          className="w-full h-full grayscale-[10%]"
+          className="w-full h-full"
           style={{ height: "100%", width: "100%" }}
         >
           <TileLayer

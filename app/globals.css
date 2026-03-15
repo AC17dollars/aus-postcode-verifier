@@ -195,3 +195,6 @@
 .leaflet-control-zoom-out {
   text-decoration: none !important;
 }
+.leaflet-tile {
+  filter: brightness(200%) !important;
+}
