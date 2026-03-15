@@ -32,6 +32,32 @@ function formatRequestedAt(iso: string): string {
   }
 }
 
+function LogStatusCell({ log }: Readonly<{ log: GraphQLLogEntry }>) {
+  if (log.status === "success" && !log.errorMessage) {
+    return (
+      <span className="text-emerald-500 font-medium">Success</span>
+    );
+  }
+  if (log.status === "success" && log.errorMessage) {
+    return (
+      <span
+        className="text-yellow-500 font-medium break-words"
+        title={log.errorMessage}
+      >
+        {log.errorMessage}
+      </span>
+    );
+  }
+  return (
+    <span
+      className="text-rose-500 break-words"
+      title={log.errorMessage}
+    >
+      {log.errorMessage || "Failure"}
+    </span>
+  );
+}
+
 export function AdminLogsView() {
   const [logs, setLogs] = useState<GraphQLLogEntry[]>([]);
   const [hasMore, setHasMore] = useState(true);
@@ -256,18 +282,7 @@ export function AdminLogsView() {
                       </td>
                       <td className="p-4 align-top">
                         <div className="text-xs">
-                          {log.status === "success" ? (
-                            <span className="text-emerald-500 font-medium">
-                              Success
-                            </span>
-                          ) : (
-                            <span
-                              className="text-rose-500 break-words"
-                              title={log.errorMessage}
-                            >
-                              {log.errorMessage || "Failure"}
-                            </span>
-                          )}
+                          <LogStatusCell log={log} />
                         </div>
                       </td>
                       <td className="p-4 align-top text-xs text-gray-400 whitespace-nowrap">

@@ -36,7 +36,7 @@ export async function logGraphQLAttempt(payload: GraphQLLogPayload) {
       status: payload.success ? "success" : "failure",
       requestedAt: new Date().toISOString(),
     };
-    if (!payload.success && payload.errorMessage) {
+    if (payload.errorMessage) {
       doc.errorMessage = truncateError(payload.errorMessage);
     }
     await elasticClient.index({

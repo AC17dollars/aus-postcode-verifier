@@ -204,6 +204,10 @@ const resolvers = {
         await logGraphQLAttempt({
           ...logPayload,
           success: true,
+          errorMessage:
+            matching.length === 0 && others.length > 0
+              ? "No exact postcode match"
+              : undefined,
         }).catch((e) => console.error("GraphQL log write failed:", e));
 
         return { success: true, message: null, matching, others };
