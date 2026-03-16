@@ -43,7 +43,7 @@ export async function createSession(
   cookieStore.set("session_token", sessionToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
+    sameSite: "lax",
     path: "/",
     maxAge: SESSION_EXPIRATION_DAYS * 24 * 60 * 60,
   });

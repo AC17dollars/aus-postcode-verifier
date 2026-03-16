@@ -14,29 +14,31 @@ function redirectToAuth(req: NextRequest, clearCookie = false) {
   return res;
 }
 
-const isVerifyPath = (pathname: string) =>
-  pathname === "/verify" || pathname === "/verify-email";
+const isTestRoute = (pathname: string) => pathname.startsWith("/api/test/");
 
-const proxy: NextProxy = async (req: NextRequest) => {
+async function handleRequest(
+  req: NextRequest,
+  { allowTestRoutes = false }: { allowTestRoutes?: boolean } = {},
+) {
   const { pathname } = req.nextUrl;
+
+  if (allowTestRoutes && isTestRoute(pathname)) {
+    return NextResponse.next();
+  }
+
   const sessionToken = req.cookies.get("session_token")?.value;
   const isAuthPage = pathname === "/auth";
-  const isVerify = isVerifyPath(pathname);
+  const isVerifyEmailPage = pathname === "/verify-email";
 
   if (!sessionToken) {
-    if (isAuthPage || isVerify) return NextResponse.next();
+    if (isAuthPage || isVerifyEmailPage) return NextResponse.next();
     return redirectToAuth(req);
   }
 
   const session = await validateSessionToken(sessionToken);
 
   if (!session) {
-    if (isAuthPage) {
-      const res = NextResponse.next();
-      res.cookies.delete("session_token");
-      return res;
-    }
-    if (isVerify) {
+    if (isAuthPage || isVerifyEmailPage) {
       const res = NextResponse.next();
       res.cookies.delete("session_token");
       return res;
@@ -48,11 +50,13 @@ const proxy: NextProxy = async (req: NextRequest) => {
   headers.set(SESSION_PAYLOAD_HEADER, encodeSessionHeader(session));
 
   if (isAuthPage) {
-    if (session.verified) return NextResponse.redirect(new URL("/", req.url));
+    if (session.verified) {
+      return NextResponse.redirect(new URL("/", req.url));
+    }
     return NextResponse.redirect(new URL("/verify-email", req.url));
   }
 
-  if (!session.verified && !isVerify) {
+  if (!session.verified && !isVerifyEmailPage) {
     return NextResponse.redirect(new URL("/verify-email", req.url));
   }
 
@@ -62,50 +66,15 @@ const proxy: NextProxy = async (req: NextRequest) => {
   }
 
   return NextResponse.next({ request: { headers } });
-};
+}
 
-const isTestRoute = (pathname: string) => pathname.startsWith("/api/test/");
+const proxy: NextProxy = async (req: NextRequest) => handleRequest(req);
 
 const handler =
   env.ALLOW_TEST_ROUTES === "true"
-    ? async function testProxy(req: NextRequest) {
-        const { pathname } = req.nextUrl;
-        if (isTestRoute(pathname)) return NextResponse.next();
-
-        const sessionToken = req.cookies.get("session_token")?.value;
-        if (!sessionToken) {
-          if (pathname === "/auth" || isVerifyPath(pathname))
-            return NextResponse.next();
-          return redirectToAuth(req);
-        }
-
-        const session = await validateSessionToken(sessionToken);
-        if (!session) {
-          if (pathname === "/auth" || isVerifyPath(pathname)) {
-            const res = NextResponse.next();
-            res.cookies.delete("session_token");
-            return res;
-          }
-          return redirectToAuth(req, true);
-        }
-
-        const headers = new Headers(req.headers);
-        headers.set(SESSION_PAYLOAD_HEADER, encodeSessionHeader(session));
-
-        if (pathname === "/auth") {
-          if (session.verified)
-            return NextResponse.redirect(new URL("/", req.url));
-          return NextResponse.redirect(new URL("/verify-email", req.url));
-        }
-        if (!session.verified && !isVerifyPath(pathname)) {
-          return NextResponse.redirect(new URL("/verify-email", req.url));
-        }
-        if (pathname === "/logs" && !session.admin) {
-          return NextResponse.redirect(new URL("/", req.url));
-        }
-
-        return NextResponse.next({ request: { headers } });
-      }
+    ? (async function testProxy(req: NextRequest) {
+        return handleRequest(req, { allowTestRoutes: true });
+      }) as NextProxy
     : proxy;
 
 export default handler;
