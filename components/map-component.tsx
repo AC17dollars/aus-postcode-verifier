@@ -134,7 +134,11 @@ function openGoogleMapsDirections(destLat: number, destLng: number) {
   const lng = to4Decimals(destLng);
   const dest = `${lat},${lng}`;
   if (!navigator.geolocation) {
-    window.open(`https://www.google.com/maps/search/?api=1&query=${dest}`, "_blank", "noopener,noreferrer");
+    window.open(
+      `https://www.google.com/maps/search/?api=1&query=${dest}`,
+      "_blank",
+      "noopener,noreferrer",
+    );
     return;
   }
   navigator.geolocation.getCurrentPosition(
@@ -144,7 +148,11 @@ function openGoogleMapsDirections(destLat: number, destLng: number) {
       window.open(url, "_blank", "noopener,noreferrer");
     },
     () => {
-      window.open(`https://www.google.com/maps?q=${dest}`, "_blank", "noopener,noreferrer");
+      window.open(
+        `https://www.google.com/maps?q=${dest}`,
+        "_blank",
+        "noopener,noreferrer",
+      );
     },
   );
 }
@@ -199,7 +207,9 @@ const DivMarker: React.FC<{
               size={TOOLTIP_ICON_SIZE}
               className="shrink-0 opacity-90"
             />
-            <span className="custom-tooltip-name font-bold leading-tight whitespace-nowrap">{loc.location}</span>
+            <span className="custom-tooltip-name font-bold leading-tight whitespace-nowrap">
+              {loc.location}
+            </span>
           </div>
           <div className="custom-tooltip-sub text-[10px] leading-tight">
             {categoryLabel}
@@ -240,7 +250,10 @@ export function MapComponent({
         <MapContainer
           center={[-25.2744, 133.7751]}
           zoom={4}
-          maxBounds={[[-90, -Infinity], [90, +Infinity]]}
+          maxBounds={[
+            [-90, -Infinity],
+            [90, +Infinity],
+          ]}
           maxBoundsViscosity={1}
           zoomControl={false}
           className="w-full h-full"

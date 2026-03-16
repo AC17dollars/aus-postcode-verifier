@@ -129,7 +129,12 @@ function getStorageForPreference(pref: StoragePreference): WebStorage | null {
 
 type PersistedSlice = Pick<
   VerifierState,
-  "form" | "matchingLocalities" | "otherLocalities" | "status" | "message" | "showMapOnMobile"
+  | "form"
+  | "matchingLocalities"
+  | "otherLocalities"
+  | "status"
+  | "message"
+  | "showMapOnMobile"
 >;
 
 function makePersistStorage() {

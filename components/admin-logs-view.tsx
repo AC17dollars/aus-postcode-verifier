@@ -34,9 +34,7 @@ function formatRequestedAt(iso: string): string {
 
 function LogStatusCell({ log }: Readonly<{ log: GraphQLLogEntry }>) {
   if (log.status === "success" && !log.errorMessage) {
-    return (
-      <span className="text-emerald-500 font-medium">Success</span>
-    );
+    return <span className="text-emerald-500 font-medium">Success</span>;
   }
   if (log.status === "success" && log.errorMessage) {
     return (
@@ -49,10 +47,7 @@ function LogStatusCell({ log }: Readonly<{ log: GraphQLLogEntry }>) {
     );
   }
   return (
-    <span
-      className="text-rose-500 break-words"
-      title={log.errorMessage}
-    >
+    <span className="text-rose-500 break-words" title={log.errorMessage}>
       {log.errorMessage || "Failure"}
     </span>
   );

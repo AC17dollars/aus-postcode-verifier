@@ -37,7 +37,11 @@ const typeDefs = /* GraphQL */ `
   }
 
   type Query {
-    searchPostcode(suburb: String!, state: String, postcode: String!): SearchPostcodeResult
+    searchPostcode(
+      suburb: String!
+      state: String
+      postcode: String!
+    ): SearchPostcodeResult
   }
 `;
 
@@ -129,7 +133,8 @@ async function fetchAusPostLocalities(url: URL): Promise<unknown[]> {
   const response = await fetch(url.toString(), {
     headers: { Authorization: `Bearer ${env.AUSPOST_API_KEY}` },
   });
-  if (!response.ok) throw createGraphQLError("Address service error. Try again.");
+  if (!response.ok)
+    throw createGraphQLError("Address service error. Try again.");
   let data: { localities?: { locality?: unknown } };
   try {
     data = (await response.json()) as { localities?: { locality?: unknown } };

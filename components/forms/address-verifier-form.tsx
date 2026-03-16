@@ -416,18 +416,19 @@ function StatusAndSubmitSection({
           )}
         </Button>
       </div>
-      {onShowMapRequested && (status === "success" || showMapWhenResultsExist) && (
-        <motion.button
-          type="button"
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          onClick={onShowMapRequested}
-          className="w-full md:hidden flex items-center justify-center gap-3 h-14 rounded-xl bg-white text-black font-extrabold shadow-xl select-none"
-        >
-          <MapIcon size={20} />
-          View Results on Map
-        </motion.button>
-      )}
+      {onShowMapRequested &&
+        (status === "success" || showMapWhenResultsExist) && (
+          <motion.button
+            type="button"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            onClick={onShowMapRequested}
+            className="w-full md:hidden flex items-center justify-center gap-3 h-14 rounded-xl bg-white text-black font-extrabold shadow-xl select-none"
+          >
+            <MapIcon size={20} />
+            View Results on Map
+          </motion.button>
+        )}
     </>
   );
 }

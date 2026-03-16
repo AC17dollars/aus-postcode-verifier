@@ -74,7 +74,7 @@ const handler =
   env.ALLOW_TEST_ROUTES === "true"
     ? (async function testProxy(req: NextRequest) {
         return handleRequest(req, { allowTestRoutes: true });
-      }) as NextProxy
+      } as NextProxy)
     : proxy;
 
 export default handler;
