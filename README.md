@@ -1,5 +1,35 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Setup
+
+1. **Install dependencies**
+
+   ```bash
+   pnpm install
+   # or
+   npm install
+   ```
+
+2. **Create your `.env` file**
+
+   - Copy `.env.example` to `.env`:
+
+     ```bash
+     cp .env.example .env
+     ```
+
+   - Fill in values for:
+     - **Elasticsearch**: `ELASTIC_NODE`, `ELASTIC_API_KEY`
+     - **AusPost**: `AUSPOST_API_URL`, `AUSPOST_API_KEY`
+     - **SMTP**: `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM` (and override `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE` if not using the defaults)
+     - **Optional test helpers**: set `ALLOW_TEST_ROUTES=true` only in local/test environments.
+
+3. **Run database / external services**
+
+   - Ensure your Elasticsearch instance is running and reachable from this app.
+   - Ensure your AusPost API key is active and permitted for the configured URL.
+   - Ensure your SMTP credentials are valid (for Gmail, use an App Password with 2FA enabled).
+
 ## Getting Started
 
 First, run the development server:
